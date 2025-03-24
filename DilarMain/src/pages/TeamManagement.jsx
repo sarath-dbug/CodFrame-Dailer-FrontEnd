@@ -28,8 +28,8 @@ import {
   Add as AddIcon,
   Close as CloseIcon,
 } from "@mui/icons-material";
-
 import axios from "axios";  
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
 
 // Theme definition
 const theme = createTheme({
@@ -64,7 +64,7 @@ const TeamManagement = () => {
     try {
       const userId = "67dba67d56ee856adfa59c73"; // Replace with dynamic userId if needed
       const response = await axios.get(
-        `https://codframe-dailerapp.onrender.com/api/team/fetchTeamsByUser`,
+        `${API_BASE_URL}/api/team/fetchTeamsByUser`,
         {
           params: { userId },
           headers: {
@@ -105,7 +105,7 @@ const TeamManagement = () => {
         }
 
         const response = await axios.post(
-          "https://codframe-dailerapp.onrender.com/api/team/addTeam",
+          `${API_BASE_URL}/api/team/addTeam`,
           {
             name: newTeam.name,
             userId: "67dba67d56ee856adfa59c73",
@@ -153,7 +153,7 @@ const TeamManagement = () => {
         }
 
         const response = await axios.put(
-          `https://codframe-dailerapp.onrender.com/api/team/editTeam`,
+          `${API_BASE_URL}/api/team/editTeam`,
           {
             name: editTeam.name,
             teamId: editTeam.id,

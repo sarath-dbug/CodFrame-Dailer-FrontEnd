@@ -1,4 +1,7 @@
 import { useEffect, useState } from "react";
+import { useSelector } from 'react-redux';
+import { selectCurrentToken, selectCurrentUser } from '../features/authSlice';
+import axios from "axios"; 
 import {
   Box,
   Button,
@@ -28,8 +31,7 @@ import {
   Add as AddIcon,
   Close as CloseIcon,
 } from "@mui/icons-material";
-import axios from "axios";  
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
+ const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
 
 // Theme definition
 const theme = createTheme({
@@ -53,22 +55,25 @@ const TeamManagement = () => {
   const [teams, setTeams] = useState([]);
   const [openAddDialog, setOpenAddDialog] = useState(false);
   const [openEditDialog, setOpenEditDialog] = useState(false);
-  const [openDeleteDialog, setOpenDeleteDialog] = useState(false); // State for delete confirmation dialog
-  const [teamToDelete, setTeamToDelete] = useState(null); // State to store the team to delete
+  const [openDeleteDialog, setOpenDeleteDialog] = useState(false); 
+  const [teamToDelete, setTeamToDelete] = useState(null); 
   const [newTeam, setNewTeam] = useState({ name: "" });
   const [editTeam, setEditTeam] = useState({ id: null, name: "", created: "" });
   const isTablet = useMediaQuery(theme.breakpoints.down("md"));
 
+  const token = useSelector(selectCurrentToken);
+  const user = useSelector(selectCurrentUser);
+
   // Fetch Team Dialog Handlers
   const fetchTeams = async () => {
     try {
-      const userId = "67dba67d56ee856adfa59c73"; // Replace with dynamic userId if needed
+      const userId = user.id
       const response = await axios.get(
         `${API_BASE_URL}/api/team/fetchTeamsByUser`,
         {
           params: { userId },
           headers: {
-            Authorization: `Bearer ${localStorage.getItem("token")}`, // Add token if required
+            Authorization: `Bearer ${token}`, // Add token if required
           },
         }
       );
@@ -98,7 +103,6 @@ const TeamManagement = () => {
   const handleAddTeam = async () => {
     if (newTeam.name) {
       try {
-        const token = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyIjp7ImlkIjoiNjdkYmE2N2Q1NmVlODU2YWRmYTU5YzczIn0sImlhdCI6MTc0Mjc5MzkwNCwiZXhwIjoxNzQyODgwMzA0fQ.Z_hct1k2XDkvvMQEXa1hYapkgUEXzF9pLRr9mtkYYDU";
         if (!token) {
           console.error("No token found");
           return;
@@ -108,7 +112,7 @@ const TeamManagement = () => {
           `${API_BASE_URL}/api/team/addTeam`,
           {
             name: newTeam.name,
-            userId: "67dba67d56ee856adfa59c73",
+            userId: user.id,
           },
           {
             headers: {
@@ -146,7 +150,6 @@ const TeamManagement = () => {
   const handleUpdateTeam = async () => {
     if (editTeam.name) {
       try {
-        const token = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyIjp7ImlkIjoiNjdkYmE2N2Q1NmVlODU2YWRmYTU5YzczIn0sImlhdCI6MTc0Mjc5MzkwNCwiZXhwIjoxNzQyODgwMzA0fQ.Z_hct1k2XDkvvMQEXa1hYapkgUEXzF9pLRr9mtkYYDU";
         if (!token) {
           console.error("No token found");
           return;
@@ -190,7 +193,6 @@ const TeamManagement = () => {
   const handleDeleteTeam = async () => {
     if (teamToDelete) {
       try {
-        const token = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyIjp7ImlkIjoiNjdkYmE2N2Q1NmVlODU2YWRmYTU5YzczIn0sImlhdCI6MTc0Mjc5MzkwNCwiZXhwIjoxNzQyODgwMzA0fQ.Z_hct1k2XDkvvMQEXa1hYapkgUEXzF9pLRr9mtkYYDU";
         if (!token) {
           console.error("No token found");
           return;

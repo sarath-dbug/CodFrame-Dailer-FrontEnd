@@ -4,7 +4,7 @@ import { RxDashboard } from "react-icons/rx";
 import { TbLogout, TbReportSearch } from "react-icons/tb";
 import { MdOutlineSettings } from "react-icons/md";
 import { AiOutlineCustomerService } from "react-icons/ai";
-import { BsBagCheck } from "react-icons/bs";
+import { BsPeople, BsPersonBadge  } from "react-icons/bs";
 import { MenuIcon } from "@heroicons/react/outline";
 import { NavLink, useNavigate } from "react-router-dom";
 import { useDispatch } from "react-redux";
@@ -76,15 +76,14 @@ function Sidebar({ toggleSidebar, isSidebarOpen }) {
             </NavLink>
           </li>
           <li>
-            <NavLink to="/app/agents" className={navLinkClasses}>
-              <BsBagCheck className="text-[20px] text-red-500" />
-              {isSidebarOpen && <span className="ml-3">Agents</span>}
+            <NavLink to="/app/members" className={navLinkClasses}>
+              <BsPersonBadge  className="text-[20px] text-red-500" />
+              {isSidebarOpen && <span className="ml-3">Members</span>}
             </NavLink>
           </li>
-          {/* Team */}
           <li>
             <NavLink to="/app/teams" className={navLinkClasses}>
-              <BsBagCheck className="text-[20px] text-red-500" />
+              <BsPeople  className="text-[20px] text-red-500" />
               {isSidebarOpen && <span className="ml-3">Teams</span>}
             </NavLink>
           </li>

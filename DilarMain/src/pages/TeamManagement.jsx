@@ -236,7 +236,7 @@ const TeamManagement = () => {
               }}
             >
               <Box sx={{ display: "flex", alignItems: "center" }}>
-                <PeopleIcon sx={{ color: "#4285f4", mr: 1 }} />
+                <PeopleIcon sx={{ color: "#4a148c", mr: 1 }} />
                 <Typography variant="h5" component="h1">
                   Team Management
                 </Typography>
@@ -246,9 +246,9 @@ const TeamManagement = () => {
                 startIcon={<AddIcon />}
                 onClick={handleOpenAddDialog}
                 sx={{
-                  bgcolor: "#4285f4",
+                  bgcolor: "#4a148c",
                   "&:hover": {
-                    bgcolor: "#3367d6",
+                    bgcolor: "#6a1b9a",
                   },
                 }}
               >
@@ -341,9 +341,9 @@ const TeamManagement = () => {
                   variant="contained"
                   disabled={!newTeam.name}
                   sx={{
-                    bgcolor: "#4285f4",
+                    bgcolor: "#4a148c",
                     "&:hover": {
-                      bgcolor: "#3367d6",
+                      bgcolor: "#6a1b9a",
                     },
                   }}
                 >

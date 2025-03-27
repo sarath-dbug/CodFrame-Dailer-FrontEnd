@@ -3,7 +3,6 @@ import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
 import Layout from "./components/Layout";
 import Dashboard from "./pages/Dashboard";
 import Contacts from "./pages/Contacts ";
-import Agents from "./pages/Agents";
 import Reports from "./pages/Reports";
 import Graphs from "./components/Graphs";
 import Settings from "./pages/Settings";
@@ -15,6 +14,7 @@ import AuthPages from './pages/Auth-Pages'
 import { Provider } from 'react-redux';
 import { store } from './app/store';
 import ProtectedRoute from './components/ProtectedRoute';
+import Members from "./pages/Members";
 
 function App() {
   return (
@@ -29,7 +29,7 @@ function App() {
           <Route path="/app" element={<ProtectedRoute> <Layout /></ProtectedRoute>}  >
             <Route path="/app/dashboard" element={<Dashboard />} />
             <Route path="/app/contacts" element={<Contacts />} />
-            <Route path="/app/agents" element={<Agents />} />
+            <Route path="/app/members" element={<Members />} />
             <Route path="/app/reports" element={<Reports />} />
             <Route path="/app/settings" element={<Settings />} />
             <Route path="/app/settings/edit" element={<EditContactModal />} />

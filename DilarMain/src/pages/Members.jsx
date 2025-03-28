@@ -1,6 +1,5 @@
-import React, { useEffect, useState } from "react";
-import { useSelector } from "react-redux";
-import { selectCurrentToken } from "../features/authSlice";
+import { useState, useEffect, useMemo } from "react"
+import axios from "axios"
 import {
   Box,
   Typography,
@@ -19,28 +18,19 @@ import {
   Select,
   MenuItem,
   InputAdornment,
-  Checkbox,
   Chip,
   Avatar,
   ThemeProvider,
   createTheme,
   CssBaseline,
   Container,
+  CircularProgress,
   Alert,
-} from "@mui/material";
-import {
-  Search,
-  Add,
-  Delete,
-  Close,
-  Apps,
-  FileUpload,
-  FileDownload,
-  RemoveCircle,
-  Edit,
-} from "@mui/icons-material";
-import axios from "axios";
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
+  Snackbar
+} from "@mui/material"
+import { Search, Add, Delete, Close, FileDownload, Edit } from "@mui/icons-material"
+import { useSelector } from "react-redux"
+import { selectCurrentToken, selectCurrentUser } from '../features/authSlice';
 
 // Create a theme instance
 const theme = createTheme({
@@ -50,106 +40,349 @@ const theme = createTheme({
     success: { main: "#4caf50" },
     background: { default: "#f5f7fa" },
   },
-});
+})
 
-function Members() {
-  const [members, setMembers] = useState([]);
-  const [searchQuery, setSearchQuery] = useState("");
-  const [openPasswordDialog, setOpenPasswordDialog] = useState(false);
-  const [selectedMember, setSelectedMember] = useState(null);
-  const [newPassword, setNewPassword] = useState("");
-  const [passwordError, setPasswordError] = useState("");
-  const [isChangingPassword, setIsChangingPassword] = useState(false);
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
+
+const MembersManagement = () => {
+  const [members, setMembers] = useState([])
+  const [searchQuery, setSearchQuery] = useState("")
+  const [openAddDialog, setOpenAddDialog] = useState(false)
+  const [openPasswordDialog, setOpenPasswordDialog] = useState(false)
+  const [openDeleteDialog, setOpenDeleteDialog] = useState(false)
+  const [selectedMember, setSelectedMember] = useState(null)
+  const [teams, setTeams] = useState([])
+  const [newMember, setNewMember] = useState({
+    name: "",
+    role: "",
+    username: "",
+    email: "",
+    password: "",
+    phone: "",
+    teams: [],
+  })
+  const [passwords, setPasswords] = useState({
+    current: "",
+    new: "",
+    confirm: "",
+  })
+  const [isLoading, setIsLoading] = useState(false)
+  const [snackbar, setSnackbar] = useState({
+    open: false,
+    message: "",
+    severity: "success",
+  });
+
   const token = useSelector(selectCurrentToken);
+  const user = useSelector(selectCurrentUser);
+
+
 
   // Fetch all members
-  const fetchAllMembers = async () => {
+  const fetchMembers = async () => {
+    setIsLoading(true)
     try {
-      const response = await axios.get(
-        `${API_BASE_URL}/api/member/fetchAllMembers`
-      );
-      console.log("Members data:", response.data);
-      setMembers(response.data);
+      const response = await axios.get(`${API_BASE_URL}/api/member/fetchAllMembers`)
+      console.log(response.data);
+      setMembers(response.data)
     } catch (error) {
-      console.error(
-        "Error fetching members:",
-        error.response?.data || error.message
-      );
-      throw error;
+      console.error("Error fetching members:", error)
+      showSnackbar("Failed to fetch members", "error")
+    } finally {
+      setIsLoading(false)
     }
-  };
+  }
+
+
+  const fetchTeams = async () => {
+    try {
+      const response = await axios.get(`${API_BASE_URL}/api/team/fetchTeamsByUser`, {
+        params: {
+          userId: user.id
+        },
+      })
+      setTeams(response.data.data.map(team => ({
+        id: team._id,
+        name: team.name
+      })));
+    } catch (error) {
+      console.error("Error fetching teams:", error)
+      showSnackbar("Failed to fetch teams", "error")
+    }
+  }
 
   useEffect(() => {
-    fetchAllMembers();
-  }, []);
+    fetchMembers();
+    fetchTeams();
+  }, [])
+
+
+  // Helper function to show snackbar
+  const showSnackbar = (message, severity = "success") => {
+    setSnackbar({ open: true, message, severity })
+  }
+
+  // Handle closing snackbar
+  const handleCloseSnackbar = () => {
+    setSnackbar({ ...snackbar, open: false })
+  }
 
   // Filter members based on search query
-  const filteredMembers = members.filter(
-    (member) =>
+  const filteredMembers = useMemo(() => {
+    return members.filter(member =>
       member.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
       member.email.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+    );
+  }, [members, searchQuery]);
 
-  // Handle change password
+  // Handle opening the add dialog
+  const handleOpenAddDialog = () => {
+    setNewMember({
+      name: "",
+      role: "",
+      username: "",
+      email: "",
+      password: "",
+      phone: "",
+      teams: [],
+    })
+    setSelectedMember(null)
+    setOpenAddDialog(true)
+  }
+
+  // Handle closing the add dialog
+  const handleCloseAddDialog = () => {
+    setOpenAddDialog(false)
+  }
+
+  // Handle opening the password change dialog
   const handleOpenPasswordDialog = (member) => {
-    setSelectedMember(member);
-    setOpenPasswordDialog(true);
-  };
+    setSelectedMember(member)
+    setPasswords({
+      current: "",
+      new: "",
+      confirm: "",
+    })
+    setOpenPasswordDialog(true)
+  }
 
+  // Handle closing the password change dialog
   const handleClosePasswordDialog = () => {
-    setOpenPasswordDialog(false);
+    setOpenPasswordDialog(false)
+  }
+
+  // Handle opening the delete confirmation dialog
+  const handleOpenDeleteDialog = (member) => {
+    setSelectedMember(member)
+    setOpenDeleteDialog(true)
+  }
+
+  // Handle closing the delete confirmation dialog
+  const handleCloseDeleteDialog = () => {
+    setOpenDeleteDialog(false)
+  }
+
+  // Handle input change for new member form
+  const handleInputChange = (e) => {
+    const { name, value } = e.target;
+    setNewMember(prev => ({
+      ...prev,
+      [name]: value,
+    }));
   };
 
+  // Handle input change for password change form
   const handlePasswordChange = (e) => {
-    setNewPassword(e.target.value);
-    setPasswordError("");
-  };
+    const { name, value } = e.target
+    setPasswords({
+      ...passwords,
+      [name]: value,
+    })
+  }
 
-  const handleChangePassword = async () => {
-    if (!newPassword) {
-      setPasswordError("Please enter a new password");
-      return;
+  // Handle multi-select change for teams and lists
+  const handleMultiSelectChange = (e) => {
+    const { name, value } = e.target
+    setNewMember({
+      ...newMember,
+      [name]: value,
+    })
+  }
+
+  // Handle adding or editing a member
+  const handleAddOrEditMember = async () => {
+    if (!newMember.name || !newMember.email || !newMember.role) {
+      showSnackbar("Please fill all required fields", "error")
+      return
     }
 
-    if (newPassword.length < 8) {
-      setPasswordError("Password must be at least 8 characters");
-      return;
-    }
-
-    setIsChangingPassword(true);
+    setIsLoading(true)
     try {
-      const response = await axios.put(
+      if (selectedMember) {
+        // Update existing member
+        const updateData = {
+          name: newMember.name,
+          phone: newMember.phone,
+        };
+        const response = await axios.put(
+          `${API_BASE_URL}/api/member/updateMember/${selectedMember._id}`,
+          updateData,
+          {
+            headers: {
+              Authorization: `Bearer ${token}`,
+            },
+          }
+        )
+        fetchMembers();
+        showSnackbar("Member updated successfully")
+      } else {
+        // Create new member
+        const memberData = {
+          name: newMember.name,
+          email: newMember.email,
+          userId: newMember.username,
+          role: newMember.role,
+          team: newMember.teams,
+          phone: newMember.phone,
+          password: newMember.password
+        }
+        const response = await axios.post(
+          `${API_BASE_URL}/api/member/addMember`,
+          memberData,
+          {
+            headers: {
+              Authorization: `Bearer ${token}`,
+            },
+          }
+        )
+        fetchMembers();
+        showSnackbar("Member added successfully")
+      }
+      handleCloseAddDialog()
+    } catch (error) {
+      console.error("Error saving member:", error)
+      showSnackbar(error.response?.data?.msg || "Failed to save member", "error")
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
+  // Handle deleting a member
+  const handleDeleteMember = async () => {
+    if (!selectedMember) return
+
+    setIsLoading(true)
+    try {
+      await axios.delete(`${API_BASE_URL}/api/member/deleteMember/${selectedMember.userId}`, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      })
+      setMembers(members.filter(member => member.id !== selectedMember.id))
+      showSnackbar("Member deleted successfully")
+      handleCloseDeleteDialog()
+      fetchMembers();
+    } catch (error) {
+      console.error("Error deleting member:", error)
+      showSnackbar(error.response?.data?.msg || "Failed to delete member", "error")
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
+  // Handle changing a member's password
+  const handleChangePassword = async () => {
+    if (!selectedMember) return
+
+    if (passwords.new !== passwords.confirm) {
+      showSnackbar("New passwords don't match", "error")
+      return
+    }
+
+    setIsLoading(true)
+    try {
+      await axios.put(
         `${API_BASE_URL}/api/member/changePassword`,
         {
-          userId: selectedMember.userId,
-          newPassword: newPassword,
+          newPassword: passwords.new,
+          userId: selectedMember.userId
         },
         {
           headers: {
             Authorization: `Bearer ${token}`,
           },
         }
-      );
-
-      handleClosePasswordDialog();
-      setNewPassword("");
-      // Consider using a snackbar instead of alert
-      setMembers((prev) =>
-        prev.map((m) =>
-          m._id === selectedMember._id
-            ? { ...m, updatedAt: new Date().toISOString() }
-            : m
-        )
-      );
+      )
+      showSnackbar("Password changed successfully")
+      handleClosePasswordDialog()
     } catch (error) {
-      console.error("Error changing password:", error);
-      setPasswordError(
-        error.response?.data?.msg || "Failed to update password"
-      );
+      console.error("Error changing password:", error)
+      showSnackbar(error.response?.data?.msg || "Failed to change password", "error")
     } finally {
-      setIsChangingPassword(false);
+      setIsLoading(false)
+    }
+  }
+
+  // Handle editing a member
+  const handleEditMember = (member) => {
+    setSelectedMember(member)
+    setNewMember({
+      name: member.name,
+      role: member.role,
+      username: member.userId || "",
+      email: member.email,
+      password: "",
+      phone: member.phone || "",
+      teams: member.team || [],
+    })
+    setOpenAddDialog(true)
+  }
+
+
+  // Handle exporting a member's data
+  const handleExportMembers = () => {
+    if (members.length === 0) {
+      showSnackbar('No members to export', 'warning');
+      return;
+    }
+  
+    try {
+      // Transform data for CSV
+      const fields = ['Name', 'Email', 'User ID', 'Role', 'Teams', 'Phone'];
+      const data = members.map(member => ({
+        Name: member.name,
+        Email: member.email,
+        'User ID': member.userId,
+        Role: member.role,
+        Teams: member.team?.join(', ') || '',
+        Phone: member.phone || ''
+      }));
+  
+      // Convert to CSV
+      let csv = fields.join(',') + '\n';
+      data.forEach(row => {
+        csv += Object.values(row).map(value => 
+          `"${value?.toString().replace(/"/g, '""')}"`
+        ).join(',') + '\n';
+      });
+  
+      // Create download
+      const blob = new Blob([csv], { type: 'text/csv' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', 'members_export.csv');
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      
+      showSnackbar('Export completed successfully');
+    } catch (error) {
+      console.error('Export failed:', error);
+      showSnackbar('Failed to export members', 'error');
     }
   };
+
 
   // Get initials for avatar
   const getInitials = (name) => {
@@ -157,8 +390,12 @@ function Members() {
       .split(" ")
       .map((n) => n[0])
       .join("")
-      .toUpperCase();
-  };
+      .toUpperCase()
+  }
+
+  // Static Roles data for dropdowns
+  const roles = ['Team Manager', 'Sub Manager', 'Agent'];
+
 
   return (
     <ThemeProvider theme={theme}>
@@ -171,15 +408,7 @@ function Members() {
             </Typography>
 
             {/* Search and Actions Bar */}
-            <Box
-              sx={{
-                display: "flex",
-                flexDirection: { xs: "column", sm: "row" },
-                gap: 2,
-                mb: 3,
-                alignItems: "center",
-              }}
-            >
+            <Box sx={{ display: "flex", flexDirection: { xs: "column", sm: "row" }, gap: 2, mb: 3, alignItems: "center" }}>
               <TextField
                 placeholder="Search Members"
                 variant="outlined"
@@ -200,199 +429,355 @@ function Members() {
                 }}
               />
               <Box
-                sx={{
-                  display: "flex",
-                  gap: 1,
-                  flexWrap: "wrap",
-                  justifyContent: { xs: "center", sm: "flex-end" },
-                  flex: 1,
-                }}
+                sx={{ display: "flex", gap: 1, flexWrap: "wrap", justifyContent: { xs: "center", sm: "flex-end" }, flex: 1 }}
               >
-                <Button variant="outlined" color="#4a148c" startIcon={<Add />}>
+                <Button variant="outlined" color="primary" startIcon={<Add />} onClick={handleOpenAddDialog}>
                   Add
                 </Button>
                 <Button
                   variant="outlined"
-                  color="#4a148c"
+                  color="primary"
                   startIcon={<FileDownload />}
+                  onClick={handleExportMembers}
+                  disabled={isLoading || members.length === 0}
                 >
-                  Export
+                  {isLoading ? 'Exporting...' : 'Export'}
                 </Button>
               </Box>
             </Box>
 
             {/* Members List */}
-            <Grid container spacing={3}>
-              {filteredMembers.map((member) => (
-                <Grid item xs={12} md={6} lg={4} key={member._id}>
-                  <Card sx={{ position: "relative" }}>
-                    <CardContent>
-                      <Box
-                        sx={{ display: "flex", alignItems: "center", mb: 2 }}
-                      >
-                        <Box sx={{ ml: 2, flex: 1 }}>
-                          <Typography variant="h6" component="div">
-                            {member.name}
-                          </Typography>
+            {isLoading && members.length === 0 ? (
+              <Box sx={{ display: "flex", justifyContent: "center", my: 4 }}>
+                <CircularProgress />
+              </Box>
+            ) : (
+              <Grid container spacing={3}>
+                {filteredMembers.map((member) => (
+                  <Grid item xs={12} md={6} lg={4} key={member.id}>
+                    <Card sx={{ position: "relative" }}>
+                      <CardContent>
+                        <Box sx={{ display: "flex", alignItems: "center", mb: 2 }}>
+                          <Box sx={{ ml: 2, flex: 1 }}>
+                            <Typography variant="h6" component="div">
+                              {member.name}
+                            </Typography>
+                            <Typography variant="body2" color="text.secondary">
+                              {member.role}
+                            </Typography>
+                          </Box>
+                          <Avatar sx={{ bgcolor: "primary.main", width: 40, height: 40 }}>
+                            {getInitials(member.name)}
+                          </Avatar>
                         </Box>
-                        <Avatar
-                          sx={{
-                            bgcolor: "#4a148c",
-                            width: 40,
-                            height: 40,
-                          }}
-                        >
-                          {getInitials(member.name)}
-                        </Avatar>
-                      </Box>
 
-                      <Grid container spacing={2}>
-                        <Grid item xs={12} sm={12}>
-                          <Typography variant="body2" color="text.secondary">
-                            <strong>Email:</strong> {member.email}
-                          </Typography>
+                        <Grid container spacing={2}>
+                          <Grid item xs={12} >
+                            <Typography variant="body2" color="text.secondary">
+                              <strong>Email:</strong> {member.email}
+                            </Typography>
+                          </Grid>
+                          {member.phone && (
+                            <Grid item xs={12}>
+                              <Typography variant="body2" color="text.secondary">
+                                <strong>Phone:</strong> {member.phone}
+                              </Typography>
+                            </Grid>
+                          )}
                         </Grid>
-                        <Grid item xs={12} sm={12}>
-                          <Typography variant="body2" color="text.secondary">
-                            <strong>Phone:</strong> {member.phone}
-                          </Typography>
-                        </Grid>
-                        <Grid item xs={12} sm={12}>
-                          <Typography variant="body2" color="text.secondary">
-                            <strong>Role:</strong> {member.role}
-                          </Typography>
-                        </Grid>
-                      </Grid>
 
-                      <Box sx={{ mt: 2 }}>
-                        <Typography variant="body2" color="text.secondary">
-                          <strong>Teams</strong>
-                        </Typography>
-                        <Box
-                          sx={{
-                            display: "flex",
-                            flexWrap: "wrap",
-                            gap: 1,
-                            mt: 1,
-                          }}
-                        >
-                          {member.team.map((team, index) => (
-                            <Chip key={index} label={team} size="small" />
-                          ))}
-                        </Box>
-                      </Box>
+                        {member.team && member.team.length > 0 && (
+                          <Box sx={{ mt: 2 }}>
+                            <Typography variant="body2" color="text.secondary">
+                              <strong>Teams</strong>
+                            </Typography>
+                            <Box sx={{ display: "flex", flexWrap: "wrap", gap: 1, mt: 1 }}>
+                              {member.team.map((team, index) => (
+                                <Chip key={index} label={team} size="small" />
+                              ))}
+                            </Box>
+                          </Box>
+                        )}
 
-                      <Box sx={{ mt: 2 }}>
-                        <Typography variant="body2" color="text.secondary">
-                          <strong>Lists</strong>
-                        </Typography>
-                        <Box
-                          sx={{
-                            display: "flex",
-                            flexWrap: "wrap",
-                            gap: 1,
-                            mt: 1,
-                          }}
-                        >
-                          {member.lists.map((list, index) => (
-                            <Chip
-                              key={index}
-                              label={list}
-                              size="small"
-                              onDelete={() => {}}
-                              deleteIcon={<Close fontSize="small" />}
-                            />
-                          ))}
-                        </Box>
-                      </Box>
+                        {member.lists && member.lists.length > 0 && (
+                          <Box sx={{ mt: 2 }}>
+                            <Typography variant="body2" color="text.secondary">
+                              <strong>Lists</strong>
+                            </Typography>
+                            <Box sx={{ display: "flex", flexWrap: "wrap", gap: 1, mt: 1 }}>
+                              {member.lists.map((list, index) => (
+                                <Chip
+                                  key={index}
+                                  label={list}
+                                  size="small"
+                                  onDelete={() => { }}
+                                  deleteIcon={<Close fontSize="small" />}
+                                />
+                              ))}
+                            </Box>
+                          </Box>
+                        )}
 
-                      <Box
-                        sx={{
-                          display: "flex",
-                          justifyContent: "space-between",
-                          mt: 3,
-                          alignItems: "center",
-                        }}
-                      >
-                        <Button
-                          color="success"
-                          onClick={() => handleOpenPasswordDialog(member)}
-                        >
-                          CHANGE PASSWORD
-                        </Button>
-                        <Box>
-                          <IconButton
-                            color="error"
-                            // onClick={() => handleOpenDeleteDialog(member)}
-                          >
-                            <Delete />
-                          </IconButton>
-                          <IconButton
-                            color="primary"
-                            // onClick={() => handleEditMember(member)}
-                          >
-                            <Edit />
-                          </IconButton>
+                        <Box sx={{ display: "flex", justifyContent: "space-between", mt: 3, alignItems: "center" }}>
+                          <Button color="primary" onClick={() => handleOpenPasswordDialog(member)}>
+                            CHANGE PASSWORD
+                          </Button>
+                          <Box>
+                            <IconButton color="error" onClick={() => handleOpenDeleteDialog(member)}>
+                              <Delete />
+                            </IconButton>
+                            <IconButton color="primary" onClick={() => handleEditMember(member)}>
+                              <Edit />
+                            </IconButton>
+                          </Box>
                         </Box>
-                      </Box>
-                    </CardContent>
-                  </Card>
-                </Grid>
-              ))}
-            </Grid>
+                      </CardContent>
+                    </Card>
+                  </Grid>
+                ))}
+              </Grid>
+            )}
 
             {/* Add/Edit Member Dialog */}
-
-            {/* Change Password Dialog */}
-            <Dialog
-              open={openPasswordDialog}
-              onClose={handleClosePasswordDialog}
-              fullWidth
-              maxWidth="sm"
-            >
+            <Dialog open={openAddDialog} onClose={handleCloseAddDialog} fullWidth maxWidth="md">
               <DialogTitle>
-                Change Password 
+                {selectedMember ? "Edit Member" : "Add New Member"}
+                <IconButton
+                  aria-label="close"
+                  onClick={handleCloseAddDialog}
+                  sx={{
+                    position: "absolute",
+                    right: 8,
+                    top: 8,
+                  }}
+                >
+                  <Close />
+                </IconButton>
               </DialogTitle>
               <DialogContent dividers>
-                {passwordError && (
-                  <Alert severity="error" sx={{ mb: 2 }}>
-                    {passwordError}
-                  </Alert>
-                )}
+                <Grid container spacing={2}>
+                  <Grid item xs={12} sm={6}>
+                    <TextField
+                      name="name"
+                      label="Name"
+                      fullWidth
+                      value={newMember.name}
+                      onChange={handleInputChange}
+                      margin="normal"
+                      required
+                      disabled={isLoading}
+                    />
+                  </Grid>
+                  <Grid item xs={12} sm={6}>
+                    <TextField
+                      name="email"
+                      label="Email"
+                      type="email"
+                      fullWidth
+                      value={newMember.email}
+                      onChange={handleInputChange}
+                      margin="normal"
+                      required
+                      disabled={!!selectedMember || isLoading}
+                    />
+                  </Grid>
+                  <Grid item xs={12} sm={6}>
+                    <TextField
+                      name="username"
+                      label="User ID"
+                      fullWidth
+                      value={newMember.username}
+                      onChange={handleInputChange}
+                      margin="normal"
+                      required
+                      disabled={!!selectedMember || isLoading}
+                    />
+                  </Grid>
+                  {!selectedMember && (
+                    <Grid item xs={12} sm={6}>
+                      <TextField
+                        name="password"
+                        label="Password"
+                        type="password"
+                        fullWidth
+                        value={newMember.password}
+                        onChange={handleInputChange}
+                        margin="normal"
+                        required
+                        disabled={isLoading}
+                      />
+                    </Grid>
+                  )}
+                  <Grid item xs={12} sm={6}>
+                    <FormControl fullWidth margin="normal" required>
+                      <InputLabel>Role</InputLabel>
+                      <Select
+                        name="role"
+                        value={newMember.role}
+                        onChange={handleInputChange}
+                        label="Role"
+                        disabled={!!selectedMember || isLoading}
+                        inputProps={{
+                          readOnly: !!selectedMember,
+                        }}
+                      >
+                        {roles.map((role) => (
+                          <MenuItem key={role} value={role}>
+                            {role}
+                          </MenuItem>
+                        ))}
+                      </Select>
+                    </FormControl>
+                  </Grid>
+                  <Grid item xs={12} sm={6}>
+                    <TextField
+                      name="phone"
+                      label="Phone"
+                      fullWidth
+                      value={newMember.phone}
+                      onChange={handleInputChange}
+                      margin="normal"
+                      disabled={isLoading}
+                    />
+                  </Grid>
+                  <Grid item xs={12}>
+                    <FormControl fullWidth margin="normal">
+                      <InputLabel>Teams</InputLabel>
+                      <Select
+                        name="teams"
+                        multiple
+                        value={newMember.teams}
+                        onChange={handleMultiSelectChange}
+                        label="Teams"
+                        disabled={!!selectedMember || isLoading}
+                        inputProps={{
+                          readOnly: !!selectedMember,
+                        }}
+                        renderValue={(selected) => (
+                          <Box sx={{ display: "flex", flexWrap: "wrap", gap: 0.5 }}>
+                            {selected.map((teamId) => {
+                              const team = teams.find(t => t.id === teamId);
+                              return <Chip key={teamId} label={team?.name || teamId} />;
+                            })}
+                          </Box>
+                        )}
+                      >
+                        {teams.map((team) => (
+                          <MenuItem key={team.id} value={team.id}>
+                            {team.name}
+                          </MenuItem>
+                        ))}
+                      </Select>
+                    </FormControl>
+                  </Grid>
+                </Grid>
+              </DialogContent>
+              <DialogActions>
+                <Button onClick={handleCloseAddDialog}>Cancel</Button>
+                <Button
+                  onClick={handleAddOrEditMember}
+                  variant="contained"
+                  color="primary"
+                  disabled={isLoading}
+                >
+                  {isLoading ? (
+                    <CircularProgress size={24} />
+                  ) : selectedMember ? (
+                    "Update"
+                  ) : (
+                    "Add"
+                  )}
+                </Button>
+              </DialogActions>
+            </Dialog>
+
+            {/* Change Password Dialog */}
+            <Dialog open={openPasswordDialog} onClose={handleClosePasswordDialog} fullWidth maxWidth="sm">
+              <DialogTitle>
+                Change Password
+                <IconButton
+                  aria-label="close"
+                  onClick={handleClosePasswordDialog}
+                  sx={{
+                    position: "absolute",
+                    right: 8,
+                    top: 8,
+                  }}
+                >
+                  <Close />
+                </IconButton>
+              </DialogTitle>
+              <DialogContent dividers>
                 <TextField
+                  name="new"
                   label="New Password"
                   type="password"
                   fullWidth
-                  value={newPassword}
+                  value={passwords.new}
                   onChange={handlePasswordChange}
                   margin="normal"
                   required
-                  error={!!passwordError}
-                  helperText={passwordError}
+                />
+                <TextField
+                  name="confirm"
+                  label="Confirm New Password"
+                  type="password"
+                  fullWidth
+                  value={passwords.confirm}
+                  onChange={handlePasswordChange}
+                  margin="normal"
+                  required
                 />
               </DialogContent>
               <DialogActions>
-                <Button
-                  onClick={handleClosePasswordDialog}
-                  disabled={isChangingPassword}
-                >
-                  Cancel
-                </Button>
+                <Button onClick={handleClosePasswordDialog}>Cancel</Button>
                 <Button
                   onClick={handleChangePassword}
                   variant="contained"
                   color="primary"
-                  disabled={!newPassword || isChangingPassword}
+                  disabled={isLoading || !passwords.new || passwords.new !== passwords.confirm}
                 >
-                  {isChangingPassword ? "Changing..." : "Change Password"}
+                  {isLoading ? <CircularProgress size={24} /> : "Change Password"}
+                </Button>
+              </DialogActions>
+            </Dialog>
+
+            {/* Delete Confirmation Dialog */}
+            <Dialog open={openDeleteDialog} onClose={handleCloseDeleteDialog}>
+              <DialogTitle>Confirm Delete</DialogTitle>
+              <DialogContent>
+                <Typography>
+                  Are you sure you want to delete {selectedMember?.name}?
+                </Typography>
+              </DialogContent>
+              <DialogActions>
+                <Button onClick={handleCloseDeleteDialog}>Cancel</Button>
+                <Button
+                  onClick={handleDeleteMember}
+                  color="error"
+                  disabled={isLoading}
+                >
+                  {isLoading ? <CircularProgress size={24} /> : "Delete"}
                 </Button>
               </DialogActions>
             </Dialog>
           </Box>
         </Box>
       </Container>
+
+      {/* Snackbar for notifications */}
+      <Snackbar
+        open={snackbar.open}
+        autoHideDuration={6000}
+        onClose={handleCloseSnackbar}
+        anchorOrigin={{ vertical: "top", horizontal: "right" }}
+      >
+        <Alert onClose={handleCloseSnackbar} severity={snackbar.severity} sx={{ width: "100%" }}>
+          {snackbar.message}
+        </Alert>
+      </Snackbar>
     </ThemeProvider>
-  );
+  )
 }
 
-export default Members;
+export default MembersManagement

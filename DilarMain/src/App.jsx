@@ -15,6 +15,7 @@ import { Provider } from 'react-redux';
 import { store } from './app/store';
 import ProtectedRoute from './components/ProtectedRoute';
 import Members from "./pages/Members";
+import ContactManagement from "./pages/ContactManagement";
 
 function App() {
   return (
@@ -28,7 +29,7 @@ function App() {
           {/* Protected routes */}
           <Route path="/app" element={<ProtectedRoute> <Layout /></ProtectedRoute>}  >
             <Route path="/app/dashboard" element={<Dashboard />} />
-            <Route path="/app/contacts" element={<Contacts />} />
+            <Route path="/app/contacts" element={<ContactManagement />} />
             <Route path="/app/members" element={<Members />} />
             <Route path="/app/reports" element={<Reports />} />
             <Route path="/app/settings" element={<Settings />} />

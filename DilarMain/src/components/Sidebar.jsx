@@ -8,10 +8,10 @@ import { BsPeople, BsPersonBadge } from "react-icons/bs";
 import { MenuIcon } from "@heroicons/react/outline";
 import { NavLink, useNavigate } from "react-router-dom";
 import { useDispatch, useSelector } from "react-redux";
-import { clearCredentials } from '../features/authSlice';
 import { FaChevronDown, FaChevronUp } from "react-icons/fa";
 import axios from "axios";
-import { selectCurrentToken, selectCurrentUser } from '../features/authSlice';
+import { selectCurrentToken, selectCurrentUser, clearCredentials } from '../features/authSlice';
+import { setCurrentTeam, clearCurrentTeam } from '../features/teamSlice';
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
 
@@ -26,9 +26,11 @@ function Sidebar({ toggleSidebar, isSidebarOpen }) {
   const sidebarRef = useRef(null);
   const [teamDropdownOpen, setTeamDropdownOpen] = useState(false);
   const [teams, setTeams] = useState([]);
-  const [selectedTeam, setSelectedTeam] = useState(null);
   const [loadingTeams, setLoadingTeams] = useState(false);
   const [error, setError] = useState(null);
+
+  const currentTeam = useSelector(state => state.team.currentTeam);
+  const [selectedTeam, setSelectedTeam] = useState(currentTeam);
 
   const token = useSelector(selectCurrentToken);
   const user = useSelector(selectCurrentUser);
@@ -39,47 +41,43 @@ function Sidebar({ toggleSidebar, isSidebarOpen }) {
   // Fetch Team Dialog Handlers
   const fetchTeams = useCallback(async () => {
     try {
-      setLoadingTeams(true);
-      setError(null);
       const userId = user?.id;
-      
       if (!userId) return;
       
-      const response = await axios.get(
-        `${API_BASE_URL}/api/team/fetchTeamsByUser`,
-        {
-          params: { userId },
-          headers: {
-            Authorization: `Bearer ${token}`
-          }
-        }
-      );
+      const response = await axios.get(`${API_BASE_URL}/api/team/fetchTeamsByUser`, {
+        params: { userId },
+        headers: { Authorization: `Bearer ${token}` }
+      });
 
       setTeams(response.data.data);
-      // Auto-select first team if available
+
       if (response.data.data?.length > 0) {
-        setSelectedTeam(response.data.data[0]);
+        let teamToSelect = currentTeam; 
+        
+        if (currentTeam && !response.data.data.some(t => t._id === currentTeam._id)) {
+          teamToSelect = null;
+        }
+        
+        if (!teamToSelect) {
+          teamToSelect = response.data.data[0];
+          dispatch(setCurrentTeam(teamToSelect));
+        }
+        
+        setSelectedTeam(teamToSelect);
       }
     } catch (err) {
       console.error("Error fetching teams:", err);
-      setError("Failed to load teams");
-    } finally {
-      setLoadingTeams(false);
     }
-  }, [user, token]);
+  }, [user, token, currentTeam, dispatch]);
 
-  // Fetch teams on component mount
   useEffect(() => {
     fetchTeams();
   }, [fetchTeams]);
 
   const handleLogout = () => {
-    // Clear Redux state
     dispatch(clearCredentials());
-
-    // Clear sessionStorage
+    dispatch(clearCurrentTeam()); 
     sessionStorage.removeItem('auth');
-
     navigate('/login');
   };
 
@@ -90,6 +88,7 @@ function Sidebar({ toggleSidebar, isSidebarOpen }) {
 
   const handleTeamSelect = (team) => {
     setSelectedTeam(team);
+    dispatch(setCurrentTeam(team));
     setTeamDropdownOpen(false);
   };
 
@@ -131,23 +130,15 @@ function Sidebar({ toggleSidebar, isSidebarOpen }) {
             >
               {isSidebarOpen && (
                 <>
-                  {loadingTeams ? (
-                    <span className="flex-grow">Loading teams...</span>
-                  ) : error ? (
-                    <span className="flex-grow text-red-400">Error loading teams</span>
-                  ) : (
-                    <>
-                      <span className="flex-grow">
-                        Team: {selectedTeam?.name || "No team selected"}
-                      </span>
-                      {teams.length > 0 && (
-                        teamDropdownOpen ? (
-                          <FaChevronUp className="text-[10px]" />
-                        ) : (
-                          <FaChevronDown className="text-[10px]" />
-                        )
-                      )}
-                    </>
+                  <span className="flex-grow">
+                    Team: {selectedTeam?.name || "No team selected"}
+                  </span>
+                  {teams.length > 0 && (
+                    teamDropdownOpen ? (
+                      <FaChevronUp className="text-[10px]" />
+                    ) : (
+                      <FaChevronDown className="text-[10px]" />
+                    )
                   )}
                 </>
               )}

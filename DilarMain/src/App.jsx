@@ -2,7 +2,6 @@ import React from "react";
 import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
 import Layout from "./components/Layout";
 import Dashboard from "./pages/Dashboard";
-import Contacts from "./pages/Contacts ";
 import Reports from "./pages/Reports";
 import Graphs from "./components/Graphs";
 import Settings from "./pages/Settings";

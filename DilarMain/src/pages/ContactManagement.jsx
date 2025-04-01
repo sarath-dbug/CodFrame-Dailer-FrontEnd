@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react"
+import { useCallback, useEffect, useState } from "react"
 import {
   Box,
   Typography,
@@ -80,6 +80,7 @@ const CRMComponent = () => {
 
   // States for various dialogs
   const [selectedList, setSelectedList] = useState("")
+  const [currentList, setCurrentList] = useState(null)
   const [openAddContact, setOpenAddContact] = useState(false)
   const [openImportContacts, setOpenImportContacts] = useState(false)
   const [openNewList, setOpenNewList] = useState(false)
@@ -88,14 +89,18 @@ const CRMComponent = () => {
   const [openEmptyList, setOpenEmptyList] = useState(false)
   const [openAssignMembers, setOpenAssignMembers] = useState(false)
   const [lists, setLists] = useState([])
+  const [contacts, setContacts] = useState([])
   const [selectedFile, setSelectedFile] = useState(null);
-  const [isUploading, setIsUploading] = useState(false);
-  const [uploadProgress, setUploadProgress] = useState(0);
+  const [newListName, setNewListName] = useState("");
+  const [editListName, setEditListName] = useState("")
   const [snackbar, setSnackbar] = useState({
     open: false,
     message: "",
     severity: "success",
   });
+  console.log("currentList:", currentList);
+
+
 
   // States for form data
   const [newContact, setNewContact] = useState({
@@ -119,75 +124,149 @@ const CRMComponent = () => {
   const [selectedDisposition, setSelectedDisposition] = useState("All Dispositions")
   const [searchQuery, setSearchQuery] = useState("")
 
-  // Mock data for contacts
-  const [contacts, setContacts] = useState([
-    {
-      id: 1,
-      number: "+91(61)3155319",
-      secondaryNumber: "",
-      name: "",
-      companyName: "",
-      email: "",
-      disposition: "NEW",
-      address: "",
-      extra: "",
-      remarks: "",
-      note: "",
-      createdOn: "2023-05-15",
-      assignee: "Abhishek Kumar",
-      totalDuration: "00:00:00",
-    },
-    {
-      id: 2,
-      number: "9654359043",
-      secondaryNumber: "",
-      name: "Jyoti",
-      companyName: "Delhi Physiotherapy Occupational Therapy Clinic",
-      email: "",
-      disposition: "NEW",
-      address: "",
-      extra: "",
-      remarks: "",
-      note: "",
-      createdOn: "2023-05-16",
-      assignee: "Abhishek Kumar",
-      totalDuration: "00:05:23",
-    },
-  ])
-
-
   // Mock data for members
   const [members, setMembers] = useState(["Abhishek Kumar", "John Doe", "Jane Smith", "Mike Johnson"])
   const [selectedMembers, setSelectedMembers] = useState(["Abhishek Kumar"])
 
 
   // Fetch all lists
-  useEffect(() => {
-    const fetchLists = async () => {
-      if (!currentTeam?._id) return;
+  const fetchLists = useCallback(async () => {
+    if (!currentTeam?._id) return;
 
-      try {
-        const response = await axios.get(
-          `${API_BASE_URL}/api/lists/fetchListsByTeam`,
-          {
-            params: {
-              teamId: currentTeam._id
-            }
+    try {
+      const response = await axios.get(
+        `${API_BASE_URL}/api/lists/fetchListsByTeam`,
+        {
+          params: {
+            teamId: currentTeam._id
+          },
+          headers: {
+            Authorization: `Bearer ${token}`
           }
-        );
-
-        setLists(response.data.data);
-
-        if (response.data.data.length > 0) {
-          setSelectedList(response.data.data[0].name);
         }
-      } catch (err) {
-        console.error("Failed to fetch lists:", err.message);
-      }
-    };
+      );
 
+      setLists(response.data.data);
+
+      if (response.data.data.length > 0) {
+        setSelectedList(response.data.data[0].name);
+        setCurrentList(response.data.data[0]);
+      }
+    } catch (err) {
+      console.error("Failed to fetch lists:", err.message);
+      showSnackbar("Failed to load lists", "error");
+    }
+  }, [currentTeam?._id, token]);
+
+  useEffect(() => {
     fetchLists();
-  }, [currentTeam?._id]);
+  }, [fetchLists]);
+
+
+  // Fetch all list contacts
+  const fetchContacts = useCallback(async () => {
+    if (!currentList?._id) return;
+
+    try {
+      const response = await axios.get(
+        `${API_BASE_URL}/api/contacts/fetchAllListContacts`,
+        {
+          params: {
+            listId: currentList._id
+          },
+          headers: {
+            Authorization: `Bearer ${token}`
+          }
+        }
+      );
+
+      console.log(response.data);
+      setContacts(response.data);
+    } catch (error) {
+      console.error("Error fetching contacts:", error);
+      showSnackbar(
+        error.response?.data?.msg || "Failed to load contacts",
+        "error"
+      );
+      setContacts([]); // Clear contacts on error
+    } 
+  }, [currentList?._id, token]);
+
+  useEffect(() => {
+    fetchContacts();
+  }, [fetchContacts]);
+
+
+
+  // Handle form input changes
+  const handleContactInputChange = (e) => {
+    const { name, value } = e.target
+    setNewContact({
+      ...newContact,
+      [name]: value,
+    })
+  }
+
+  // Handle add contact form submission
+  const handleAddContact = async () => {
+    try {
+      const response = await axios.post(
+        `${API_BASE_URL}/api/contacts/addContact`,
+        {
+          number: newContact.number,
+          secondaryNumber: newContact.secondaryNumber,
+          name: newContact.name,
+          companyName: newContact.companyName,
+          email: newContact.email,
+          dealValue: newContact.dealValue,
+          leadScore: newContact.leadScore,
+          disposition: newContact.disposition || 'NEW',
+          address: newContact.address,
+          extra: newContact.extra,
+          remarks: newContact.remarks,
+          note: newContact.note
+        },
+        {
+          headers: {
+            Authorization: `Bearer ${token}`
+          }
+        }
+      );
+
+      const newContactData = {
+        ...response.data.contact,
+        id: contacts.length > 0 ? Math.max(...contacts.map((c) => c.id)) + 1 : 1,
+        createdOn: new Date().toISOString().split("T")[0],
+        assignee: "Unassigned",
+        totalDuration: "00:00:00"
+      };
+
+      setContacts([...contacts, newContactData]);
+      setNewContact({
+        number: "",
+        secondaryNumber: "",
+        name: "",
+        companyName: "",
+        email: "",
+        dealValue: "",
+        leadScore: "",
+        disposition: "",
+        address: "",
+        extra: "",
+        remarks: "",
+        note: "",
+      });
+
+      setOpenAddContact(false);
+      showSnackbar(response.data.msg || "Contact added successfully!");
+    } catch (error) {
+      console.error('Error adding contact:', error);
+      showSnackbar(
+        error.response?.data?.msg || "Failed to add contact",
+        "error"
+      );
+    }
+  };
 
 
 
@@ -201,19 +280,16 @@ const CRMComponent = () => {
   };
 
   const handleUpload = async () => {
-    if (!selectedFile || !selectedList) {
+    if (!selectedFile || !currentList?._id) {
       showSnackbar("Please select both a file and a list", "error");
       return;
     }
-  
+
     const formData = new FormData();
     formData.append('file', selectedFile);
-    formData.append('listId', selectedList);
-  
+    formData.append('listId', currentList._id);
+
     try {
-      setIsUploading(true);
-      setUploadProgress(0);
-  
       const response = await axios.post(
         `${API_BASE_URL}/api/contacts/addContacts-csv`,
         formData,
@@ -221,35 +297,155 @@ const CRMComponent = () => {
           headers: {
             Authorization: `Bearer ${token}`,
           },
-          onUploadProgress: (progressEvent) => {
-            const percentCompleted = Math.round(
-              (progressEvent.loaded * 100) / progressEvent.total
-            );
-            setUploadProgress(percentCompleted);
-          },
         }
       );
-  
-      if (response.data?.data?.contacts) {
-        setContacts(response.data.data.contacts);
-      }
-  
-      showSnackbar("Contacts imported successfully!");
-  
+
       setOpenImportContacts(false);
-  
-      // Reload the page after successful upload
-      window.location.reload();
+      showSnackbar("Contacts imported successfully!");
+      fetchContacts();
+      fetchLists();
     } catch (error) {
       console.error('Error uploading file:', error);
       showSnackbar(error.response?.data?.msg || "Error uploading file", "error");
-    } finally {
-      setIsUploading(false);
-      setUploadProgress(0);
     }
   };
-  
 
+
+
+  // Handle new list creation
+  const handleCreateNewList = async () => {
+    if (newListName.trim() !== "") {
+      try {
+        const response = await axios.post(
+          `${API_BASE_URL}/api/lists/addList`,
+          {
+            name: newListName,
+            teamId: currentTeam._id
+          },
+          {
+            headers: {
+              Authorization: `Bearer ${token}`,
+            },
+          }
+        );
+
+        setLists([...lists, newListName]);
+        setNewListName("");
+        setOpenNewList(false);
+
+        showSnackbar("List created successfully!");
+        fetchLists()
+      } catch (error) {
+        console.error("Error creating list:", error.response?.data || error.message);
+        showSnackbar(error.response?.data?.msg || "Error creating list", "error");
+      }
+    }
+  };
+
+
+  // Handle edit list
+  const handleEditList = async () => {
+    if (editListName.trim() !== "") {
+      try {
+        const response = await axios.put(
+          `${API_BASE_URL}/api/lists/updateList/${currentList._id}`, // Fixed endpoint
+          {
+            name: editListName
+          },
+          {
+            headers: {
+              Authorization: `Bearer ${token}`,
+              'Content-Type': 'application/json'
+            },
+          }
+        );
+
+        // Update all relevant states
+        const updatedList = response.data.list; // Use the updated list from backend
+        setLists(lists.map(list =>
+          list._id === updatedList._id ? updatedList : list
+        ));
+        setCurrentList(updatedList);
+        setSelectedList(updatedList);
+        setEditListName("");
+        setOpenEditList(false);
+
+        showSnackbar("List updated successfully!");
+        fetchLists()
+      } catch (error) {
+        console.error("Error updating list:", error);
+        showSnackbar(
+          error.response?.data?.msg || "Error updating list",
+          "error"
+        );
+      }
+    }
+  };
+
+
+
+  // Handle remove list
+  const handleRemoveList = async () => {
+    try {
+      await axios.delete(
+        `${API_BASE_URL}/api/lists/deleteList/${currentList._id}`,
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      );
+
+      const updatedLists = lists.filter((list) => list._id !== currentList._id);
+      setLists(updatedLists);
+      setSelectedList(updatedLists[0].name || null); // Select first remaining list or null
+      setCurrentList(updatedLists[0] || null); // Also update currentList if you're using it
+      setOpenRemoveList(false);
+
+      showSnackbar("List removed successfully!");
+      fetchLists()
+    } catch (error) {
+      console.error("Error removing list:", error);
+      showSnackbar(
+        error.response?.data?.msg || "Failed to remove list",
+        "error"
+      );
+    }
+  };
+
+
+
+  // Handle empty list
+  const handleEmptyList = async () => {
+    try {
+      const response = await axios.delete(
+        `${API_BASE_URL}/api/lists/emptyList/${currentList._id}`,
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      );
+
+      setOpenEmptyList(false);
+      showSnackbar(response.data.msg || "List emptied successfully!");
+      fetchContacts();
+    } catch (error) {
+      console.error("Error emptying list:", error);
+      showSnackbar(
+        error.response?.data?.msg || "Failed to empty list",
+        "error"
+      );
+    }
+  };
+
+
+ // useEffect for update edit label field with currentList
+  useEffect(() => {
+    if (openEditList && currentList) {
+      setEditListName(currentList.name);
+    }
+  }, [openEditList, currentList]);
 
 
   // Helper function to show snackbar
@@ -260,83 +456,6 @@ const CRMComponent = () => {
   // Handle closing snackbar
   const handleCloseSnackbar = () => {
     setSnackbar({ ...snackbar, open: false })
-  }
-
-  // Handle form input changes
-  const handleContactInputChange = (e) => {
-    const { name, value } = e.target
-    setNewContact({
-      ...newContact,
-      [name]: value,
-    })
-  }
-
-  // Handle add contact form submission
-  const handleAddContact = () => {
-    const newId = contacts.length > 0 ? Math.max(...contacts.map((c) => c.id)) + 1 : 1
-    const newContactData = {
-      ...newContact,
-      id: newId,
-      disposition: "NEW",
-      createdOn: new Date().toISOString().split("T")[0],
-      assignee: "Unassigned",
-      totalDuration: "00:00:00",
-    }
-
-    setContacts([...contacts, newContactData])
-    setNewContact({
-      number: "",
-      secondaryNumber: "",
-      name: "",
-      companyName: "",
-      email: "",
-      dealValue: "",
-      leadScore: "",
-      disposition: "",
-      address: "",
-      extra: "",
-      remarks: "",
-      note: "",
-    })
-    setOpenAddContact(false)
-  }
-
-  // Handle new list creation
-  const [newListName, setNewListName] = useState("")
-
-  const handleCreateNewList = () => {
-    if (newListName.trim() !== "") {
-      setLists([...lists, newListName])
-      setNewListName("")
-      setOpenNewList(false)
-    }
-  }
-
-  // Handle edit list
-  const [editListName, setEditListName] = useState("")
-
-  const handleEditList = () => {
-    if (editListName.trim() !== "") {
-      const updatedLists = lists.map((list) => (list === selectedList ? editListName : list))
-      setLists(updatedLists)
-      setSelectedList(editListName)
-      setEditListName("")
-      setOpenEditList(false)
-    }
-  }
-
-  // Handle remove list
-  const handleRemoveList = () => {
-    const updatedLists = lists.filter((list) => list !== selectedList)
-    setLists(updatedLists)
-    setSelectedList(updatedLists[0] || "")
-    setOpenRemoveList(false)
-  }
-
-  // Handle empty list
-  const handleEmptyList = () => {
-    setContacts([])
-    setOpenEmptyList(false)
   }
 
   // Handle member selection
@@ -413,7 +532,7 @@ const CRMComponent = () => {
                   }}
                 >
                   {lists.map((list) => (
-                    <MenuItem key={list._id} value={list.name}>
+                    <MenuItem key={list._id} value={list.name} onClick={() => setCurrentList(list)}>
                       {list.name}
                     </MenuItem>
                   ))}
@@ -776,11 +895,8 @@ const CRMComponent = () => {
             <Table size="small">
               <TableHead sx={{ bgcolor: "#F1F5F9" }}>
                 <TableRow>
-                  <TableCell padding="checkbox">
-                    <Checkbox />
-                  </TableCell>
                   <TableCell>Phone</TableCell>
-                  <TableCell>Secondary Phone</TableCell>
+                  {/* <TableCell>Secondary Phone</TableCell> */}
                   <TableCell>Name</TableCell>
                   <TableCell>Company Name</TableCell>
                   <TableCell>Email</TableCell>
@@ -795,11 +911,8 @@ const CRMComponent = () => {
               <TableBody>
                 {currentContacts.map((contact) => (
                   <TableRow key={contact.id} hover>
-                    <TableCell padding="checkbox">
-                      <Checkbox />
-                    </TableCell>
                     <TableCell>{contact.number}</TableCell>
-                    <TableCell>{contact.secondaryNumber}</TableCell>
+                    {/* <TableCell>{contact.secondaryNumber}</TableCell> */}
                     <TableCell>{contact.name}</TableCell>
                     <TableCell>{contact.companyName}</TableCell>
                     <TableCell>{contact.email}</TableCell>
@@ -983,14 +1096,25 @@ const CRMComponent = () => {
                 />
               </Grid>
               <Grid item xs={12} sm={6}>
-                <FormControl fullWidth margin="normal">
-                  <InputLabel>Disposition</InputLabel>
-                  <Select name="disposition" value={newContact.disposition} onChange={handleContactInputChange} required>
+                <FormControl fullWidth margin="normal" variant="outlined">
+                  <InputLabel id="disposition-label">Disposition</InputLabel>
+                  <Select
+                    labelId="disposition-label"
+                    id="disposition"
+                    name="disposition"
+                    value={newContact.disposition}
+                    onChange={handleContactInputChange}
+                    label="Disposition"
+                    required
+                  >
+                    <MenuItem value="SKIP">SKIP</MenuItem>
+                    <MenuItem value="CONTACTED">INCOMING</MenuItem>
+                    <MenuItem value="QUALIFIED">CALLBACK</MenuItem>
                     <MenuItem value="NEW">NEW</MenuItem>
-                    <MenuItem value="CONTACTED">CONTACTED</MenuItem>
-                    <MenuItem value="QUALIFIED">QUALIFIED</MenuItem>
-                    <MenuItem value="LOST">LOST</MenuItem>
-                    <MenuItem value="CLOSED">CLOSED</MenuItem>
+                    <MenuItem value="WRONG NUMBER">WRONG NUMBER</MenuItem>
+                    <MenuItem value="INTERESTED">INTERESTED</MenuItem>
+                    <MenuItem value="UNREACHABLE">UNREACHABLE</MenuItem>
+                    <MenuItem value="NOT INTERESTED">NOT INTERESTED</MenuItem>
                   </Select>
                 </FormControl>
               </Grid>
@@ -1100,13 +1224,6 @@ const CRMComponent = () => {
                   accept=".csv,.xlsx,.xls"
                 />
               </Button>
-              {isUploading && (
-                <LinearProgress
-                  variant="determinate"
-                  value={uploadProgress}
-                  sx={{ mt: 2 }}
-                />
-              )}
             </Box>
             <FormControl fullWidth margin="normal" variant="outlined">
               <InputLabel>Select List</InputLabel>
@@ -1134,14 +1251,12 @@ const CRMComponent = () => {
                   bgcolor: "rgba(15, 23, 42, 0.04)",
                 },
               }}
-              disabled={isUploading}
             >
               Cancel
             </Button>
             <Button
               variant="contained"
               onClick={handleUpload}
-              disabled={!selectedFile || !selectedList || isUploading}
               sx={{
                 bgcolor: "#0F172A",
                 color: "white",
@@ -1154,13 +1269,9 @@ const CRMComponent = () => {
                   transform: "translateY(-2px)",
                   boxShadow: "0 6px 8px rgba(15, 23, 42, 0.2)",
                 },
-                "&:disabled": {
-                  bgcolor: "#E2E8F0",
-                  color: "#94A3B8",
-                }
               }}
             >
-              {isUploading ? 'Importing...' : 'Import'}
+              Import
             </Button>
           </DialogActions>
         </Dialog>

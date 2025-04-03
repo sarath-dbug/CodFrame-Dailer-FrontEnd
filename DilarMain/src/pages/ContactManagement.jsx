@@ -88,6 +88,12 @@ const CRMComponent = () => {
   const [openRemoveList, setOpenRemoveList] = useState(false)
   const [openEmptyList, setOpenEmptyList] = useState(false)
   const [openAssignMembers, setOpenAssignMembers] = useState(false)
+  const [members, setMembers] = useState([]);
+  const [assignMembers, setAssignMembers] = useState([]);
+  const [tempAssignMembers, setTempAssignMembers] = useState([]); 
+  const [assigningContacts, setAssigningContacts] = useState(false);
+  const [memberToRemove, setMemberToRemove] = useState(null);
+  const [removingMember, setRemovingMember] = useState(false);
   const [lists, setLists] = useState([])
   const [contacts, setContacts] = useState([])
   const [selectedFile, setSelectedFile] = useState(null);
@@ -98,8 +104,6 @@ const CRMComponent = () => {
     message: "",
     severity: "success",
   });
-  console.log("currentList:", currentList);
-
 
 
   // States for form data
@@ -124,9 +128,24 @@ const CRMComponent = () => {
   const [selectedDisposition, setSelectedDisposition] = useState("All Dispositions")
   const [searchQuery, setSearchQuery] = useState("")
 
-  // Mock data for members
-  const [members, setMembers] = useState(["Abhishek Kumar", "John Doe", "Jane Smith", "Mike Johnson"])
-  const [selectedMembers, setSelectedMembers] = useState(["Abhishek Kumar"])
+
+  // Fetch all members
+  const fetchMembers = useCallback(async () => {
+    if (!currentTeam?._id) return;
+
+    try {
+      const response = await axios.get(
+        `${API_BASE_URL}/api/member/fetchAllMembersInTeam?teamId=${currentTeam._id}`
+      );
+      setMembers(response.data.data);
+    } catch (error) {
+      console.error("Error fetching members:", error);
+    }
+  }, [currentList?._id]);
+
+  useEffect(() => {
+    fetchMembers();
+  }, [fetchMembers]);
 
 
   // Fetch all lists
@@ -134,26 +153,31 @@ const CRMComponent = () => {
     if (!currentTeam?._id) return;
 
     try {
-      const response = await axios.get(
-        `${API_BASE_URL}/api/lists/fetchListsByTeam`,
-        {
-          params: {
-            teamId: currentTeam._id
-          },
-          headers: {
-            Authorization: `Bearer ${token}`
-          }
-        }
-      );
+      const response = await axios.get(`${API_BASE_URL}/api/lists/fetchListsByTeam`, {
+        params: { teamId: currentTeam._id },
+        headers: { Authorization: `Bearer ${token}` }
+      });
 
-      setLists(response.data.data);
+      const listsData = response.data.data;
+      setLists(listsData);
 
-      if (response.data.data.length > 0) {
-        setSelectedList(response.data.data[0].name);
-        setCurrentList(response.data.data[0]);
+      // Collect ALL assigned member IDs from ALL lists
+      const allAssignedMemberIds = listsData
+        .filter(list => list.assignedTo)
+        .map(list => list.assignedTo);
+
+      setAssignMembers(allAssignedMemberIds);
+      setTempAssignMembers(allAssignedMemberIds)
+
+      if (listsData.length > 0) {
+        const firstList = listsData[0];
+        setSelectedList(firstList.name);
+        setCurrentList(firstList);
       }
+
+      fetchMembers();
     } catch (err) {
-      console.error("Failed to fetch lists:", err.message);
+      console.error("Fetch error:", err);
       showSnackbar("Failed to load lists", "error");
     }
   }, [currentTeam?._id, token]);
@@ -189,7 +213,7 @@ const CRMComponent = () => {
         "error"
       );
       setContacts([]); // Clear contacts on error
-    } 
+    }
   }, [currentList?._id, token]);
 
   useEffect(() => {
@@ -198,7 +222,7 @@ const CRMComponent = () => {
 
 
 
-  // Handle form input changes
+  // Handle add contact
   const handleContactInputChange = (e) => {
     const { name, value } = e.target
     setNewContact({
@@ -207,7 +231,6 @@ const CRMComponent = () => {
     })
   }
 
-  // Handle add contact form submission
   const handleAddContact = async () => {
     try {
       const response = await axios.post(
@@ -284,11 +307,12 @@ const CRMComponent = () => {
       showSnackbar("Please select both a file and a list", "error");
       return;
     }
-
+  
     const formData = new FormData();
     formData.append('file', selectedFile);
     formData.append('listId', currentList._id);
-
+    formData.append('countryCode', 'IN'); 
+  
     try {
       const response = await axios.post(
         `${API_BASE_URL}/api/contacts/addContacts-csv`,
@@ -296,17 +320,43 @@ const CRMComponent = () => {
         {
           headers: {
             Authorization: `Bearer ${token}`,
-          },
+            'Content-Type': 'multipart/form-data'
+          }
         }
       );
-
+  
       setOpenImportContacts(false);
-      showSnackbar("Contacts imported successfully!");
+      
+      // Handle the detailed response from backend
+      if (response.data.addedCount === 0) {
+        showSnackbar(
+          `No new contacts added. ${response.data.duplicatesSkipped} duplicates found.`,
+          "info"
+        );
+      } else {
+        showSnackbar(
+          `Successfully added ${response.data.addedCount} contacts.`,
+          "success"
+        );
+      }
+      
       fetchContacts();
       fetchLists();
     } catch (error) {
       console.error('Error uploading file:', error);
-      showSnackbar(error.response?.data?.msg || "Error uploading file", "error");
+    
+      if (error.response?.data?.msg) {
+        showSnackbar(error.response.data.msg, "error");
+        
+        if (error.response.data.duplicatesSkipped) {
+          showSnackbar(
+            `${error.response.data.duplicatesSkipped} duplicates were found`,
+            "warning"
+          );
+        }
+      } else {
+        showSnackbar("Error uploading file", "error");
+      }
     }
   };
 
@@ -440,7 +490,153 @@ const CRMComponent = () => {
   };
 
 
- // useEffect for update edit label field with currentList
+
+  // Handle Assign members
+  const handleMemberToggle = (memberId) => {
+    // If already has an assigned member, show warning and replace it
+    if (assignMembers.length > 0) {
+      showSnackbar("List can only have one assigned member. Remove current assignment.", "error");
+      return;
+    }
+
+    // Otherwise add the new member
+    setAssignMembers([memberId]);
+  };
+
+  const handleAssignContacts = async () => {
+    if (assignMembers.length === 0) {
+      showSnackbar("Please select at least one member");
+      return;
+    }
+
+    try {
+      setAssigningContacts(true);
+      // Assuming you want to assign to the first selected member
+      const memberId = assignMembers[0];
+      const listId = currentList._id;
+
+      const response = await axios.post(
+        `${API_BASE_URL}/api/contacts/assignContactsFromList`,
+        {
+          memberId,
+          listId,
+        },
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          },
+        }
+      );
+
+      showSnackbar(response.data.msg || "Successfully assigned list, Now the member can dial this list from the app");
+      setOpenAssignMembers(false);
+      fetchLists();
+    } catch (error) {
+      console.error("Error assigning contacts:", error);
+      showSnackbar(error.response?.data?.msg || "Failed to assign contacts");
+    } finally {
+      setAssigningContacts(false);
+    }
+  };
+
+  // Handle remove Assign members
+  const handleRemoveAssignment = async () => {
+    if (!memberToRemove || !currentList._id) return;
+
+    try {
+      setRemovingMember(true);
+
+      await axios.put(
+        `${API_BASE_URL}/api/contacts/removeAssignmentFromList`,
+        {
+          listId: currentList._id,
+          memberId: memberToRemove._id
+        },
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          },
+        }
+      );
+
+     
+      setMemberToRemove(null);
+      showSnackbar("Member removed from assignment successfully");
+      fetchLists()
+    } catch (error) {
+      console.error("Error removing assignment:", error);
+      showSnackbar(error.response?.data?.msg || "Failed to remove assignment");
+    } finally {
+      setRemovingMember(false);
+    }
+  };
+
+
+
+
+// Handle exporting contacts to CSV
+const exportContactsToCSV = () => {
+  if (contacts.length === 0) {
+    showSnackbar('No contacts to export', 'warning');
+    return;
+  }
+
+  try {
+    const fields = [
+      'Phone', 
+      'Name', 
+      'Company Name', 
+      'Email', 
+      'Disposition',
+      'Address',
+      'Extra',
+      'Remarks',
+      'Note'
+    ];
+
+    // Transform contact data for CSV
+    const data = contacts.map(contact => ({
+      'Phone': contact.number || '',
+      'Name': contact.name || '',
+      'Company Name': contact.companyName || '',
+      'Email': contact.email || '',
+      'Disposition': contact.disposition || '',
+      'Address': contact.address || '',
+      'Extra': contact.extra || '',
+      'Remarks': contact.remarks || '',
+      'Note': contact.note || ''
+    }));
+
+    // Convert to CSV format
+    let csv = fields.join(',') + '\n';
+    data.forEach(row => {
+      csv += fields.map(field => 
+        `"${row[field]?.toString().replace(/"/g, '""') || ''}"`
+      ).join(',') + '\n';
+    });
+
+    // Create and trigger download
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.setAttribute('download', `${selectedList}_contacts_${new Date().toISOString().slice(0, 10)}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    
+    showSnackbar('Contacts exported successfully');
+  } catch (error) {
+    console.error('Export failed:', error);
+    showSnackbar('Failed to export contacts', 'error');
+  }
+};
+
+
+
+  // useEffect for update edit label field with currentList
   useEffect(() => {
     if (openEditList && currentList) {
       setEditListName(currentList.name);
@@ -456,20 +652,6 @@ const CRMComponent = () => {
   // Handle closing snackbar
   const handleCloseSnackbar = () => {
     setSnackbar({ ...snackbar, open: false })
-  }
-
-  // Handle member selection
-  const handleMemberToggle = (member) => {
-    const currentIndex = selectedMembers.indexOf(member)
-    const newSelectedMembers = [...selectedMembers]
-
-    if (currentIndex === -1) {
-      newSelectedMembers.push(member)
-    } else {
-      newSelectedMembers.splice(currentIndex, 1)
-    }
-
-    setSelectedMembers(newSelectedMembers)
   }
 
   // Handle pagination
@@ -763,6 +945,7 @@ const CRMComponent = () => {
               <Button
                 variant="outlined"
                 startIcon={<GetApp />}
+                onClick={exportContactsToCSV}
                 sx={{
                   width: "100%",
                   display: "flex",
@@ -987,7 +1170,24 @@ const CRMComponent = () => {
           </Box>
 
           <Box sx={{ display: "flex", alignItems: "center", mt: 2 }}>
-            <Chip label="Abhishek Kumar" onDelete={() => { }} sx={{ mr: 1, bgcolor: "#F1F5F9" }} />
+            {tempAssignMembers.length > 0 ? (
+              tempAssignMembers.map((memberId) => {
+                const member = members.find((m) => m._id === memberId);
+                return (
+                  <Chip
+                    key={memberId}
+                    label={member?.name || "Unknown Member"}
+                    onDelete={() => setMemberToRemove(member)}
+                    sx={{ mr: 1, bgcolor: "#F1F5F9" }}
+                  />
+                );
+              })
+            ) : (
+              <Typography variant="body2" color="textSecondary">
+                No members assigned
+              </Typography>
+            )}
+
             <Button
               variant="contained"
               size="small"
@@ -1004,6 +1204,7 @@ const CRMComponent = () => {
                   transform: "translateY(-2px)",
                   boxShadow: "0 6px 8px rgba(15, 23, 42, 0.2)",
                 },
+                ml: 1
               }}
             >
               Assign
@@ -1429,7 +1630,12 @@ const CRMComponent = () => {
         </Dialog>
 
         {/* Assign Members Dialog */}
-        <Dialog open={openAssignMembers} onClose={() => setOpenAssignMembers(false)} fullWidth maxWidth="sm">
+        <Dialog
+          open={openAssignMembers}
+          onClose={() => setOpenAssignMembers(false)}
+          fullWidth
+          maxWidth="sm"
+        >
           <DialogTitle>Assign Members</DialogTitle>
           <DialogContent dividers>
             <Box sx={{ mb: 3 }}>
@@ -1437,14 +1643,17 @@ const CRMComponent = () => {
                 Selected Members:
               </Typography>
               <Box sx={{ display: "flex", flexWrap: "wrap", gap: 1 }}>
-                {selectedMembers.map((member) => (
-                  <Chip
-                    key={member}
-                    label={member}
-                    onDelete={() => handleMemberToggle(member)}
-                    sx={{ bgcolor: "#F1F5F9" }}
-                  />
-                ))}
+                {assignMembers.map((memberId) => {
+                  const member = members.find((m) => m._id === memberId);
+                  return (
+                    <Chip
+                      key={memberId}
+                      label={member?.name || memberId}
+                      onDelete={() => setMemberToRemove(member)}
+                      sx={{ bgcolor: "#F1F5F9" }}
+                    />
+                  );
+                })}
               </Box>
             </Box>
             <Divider sx={{ my: 2 }} />
@@ -1453,12 +1662,12 @@ const CRMComponent = () => {
             </Typography>
             <Box sx={{ display: "flex", flexDirection: "column", gap: 1 }}>
               {members
-                .filter((m) => !selectedMembers.includes(m))
+                .filter((m) => !assignMembers.includes(m._id))
                 .map((member) => (
                   <Button
-                    key={member}
+                    key={member._id}
                     variant="outlined"
-                    onClick={() => handleMemberToggle(member)}
+                    onClick={() => handleMemberToggle(member._id)}
                     startIcon={<Add />}
                     sx={{
                       justifyContent: "flex-start",
@@ -1466,7 +1675,7 @@ const CRMComponent = () => {
                       color: "#0F172A",
                     }}
                   >
-                    {member}
+                    {member.name}
                   </Button>
                 ))}
             </Box>
@@ -1487,6 +1696,8 @@ const CRMComponent = () => {
             </Button>
             <Button
               variant="contained"
+              onClick={handleAssignContacts}
+              disabled={assigningContacts || assignMembers.length === 0}
               sx={{
                 bgcolor: "#0F172A",
                 color: "white",
@@ -1501,7 +1712,38 @@ const CRMComponent = () => {
                 },
               }}
             >
-              Assign
+              {assigningContacts ? "Assigning..." : "Assign"}
+            </Button>
+          </DialogActions>
+        </Dialog>
+
+        {/* Remove Confirmation Dialog */}
+        <Dialog
+          open={!!memberToRemove}
+          onClose={() => setMemberToRemove(null)}
+          maxWidth="xs"
+          fullWidth
+        >
+          <DialogTitle>Confirm Removal</DialogTitle>
+          <DialogContent>
+            <Typography>
+              Are you sure you want to remove "{memberToRemove?.name}" from assignment?
+            </Typography>
+          </DialogContent>
+          <DialogActions>
+            <Button
+              onClick={() => setMemberToRemove(null)}
+              sx={{ color: "#0F172A" }}
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={handleRemoveAssignment}
+              color="error"
+              variant="contained"
+              disabled={removingMember}
+            >
+              {removingMember ? "Removing..." : "Remove"}
             </Button>
           </DialogActions>
         </Dialog>

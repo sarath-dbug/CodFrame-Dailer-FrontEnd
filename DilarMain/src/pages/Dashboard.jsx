@@ -215,7 +215,7 @@ const Dashboard = () => {
 
   // Navigate to attendance component
   const navigateToAttendance = () => {
-    navigate('/attendance');
+    navigate('/app/reports/attendance');
   };
 
   // Navigate to user details component

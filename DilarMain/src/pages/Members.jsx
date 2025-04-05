@@ -26,9 +26,30 @@ import {
   Container,
   CircularProgress,
   Alert,
-  Snackbar
+  Snackbar,
+  Paper,
+  CardActions,
+  CardHeader,
+  Divider,
+  Stack,
+  Tooltip,
 } from "@mui/material"
-import { Search, Add, Delete, Close, FileDownload, Edit } from "@mui/icons-material"
+import {
+  Search as SearchIcon,
+  Add as AddIcon,
+  Delete as DeleteIcon,
+  Close as CloseIcon,
+  FileDownload as ExportIcon,
+  Edit as EditIcon,
+  VpnKey as PasswordIcon,
+  Group as GroupIcon,
+  Person as PersonIcon,
+  Phone as PhoneIcon,
+  Email as EmailIcon,
+  Work as RoleIcon,
+  Close
+} from "@mui/icons-material";
+import ListIcon from '@mui/icons-material/List';
 import { useSelector } from "react-redux"
 import { selectCurrentToken, selectCurrentUser } from '../features/authSlice';
 
@@ -345,7 +366,7 @@ const MembersManagement = () => {
       showSnackbar('No members to export', 'warning');
       return;
     }
-  
+
     try {
       // Transform data for CSV
       const fields = ['Name', 'Email', 'User ID', 'Role', 'Teams', 'Phone'];
@@ -357,15 +378,15 @@ const MembersManagement = () => {
         Teams: member.team?.join(', ') || '',
         Phone: member.phone || ''
       }));
-  
+
       // Convert to CSV
       let csv = fields.join(',') + '\n';
       data.forEach(row => {
-        csv += Object.values(row).map(value => 
+        csv += Object.values(row).map(value =>
           `"${value?.toString().replace(/"/g, '""')}"`
         ).join(',') + '\n';
       });
-  
+
       // Create download
       const blob = new Blob([csv], { type: 'text/csv' });
       const url = URL.createObjectURL(blob);
@@ -375,7 +396,7 @@ const MembersManagement = () => {
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
-      
+
       showSnackbar('Export completed successfully');
     } catch (error) {
       console.error('Export failed:', error);
@@ -403,135 +424,240 @@ const MembersManagement = () => {
       <Container maxWidth="xl">
         <Box sx={{ my: 4 }}>
           <Box sx={{ p: 3 }}>
-            <Typography variant="h4" component="h1" gutterBottom>
-              Members
-            </Typography>
+
+            {/* main bar text */}
+            <Box sx={{ mb: 4 }}>
+              <Typography variant="h4" component="h1" gutterBottom fontWeight="bold">
+                Team Members
+              </Typography>
+              <Typography variant="body1" color="text.secondary">
+                Manage your team members and their permissions
+              </Typography>
+            </Box>
 
             {/* Search and Actions Bar */}
-            <Box sx={{ display: "flex", flexDirection: { xs: "column", sm: "row" }, gap: 2, mb: 3, alignItems: "center" }}>
+            <Box sx={{
+              display: 'flex',
+              flexDirection: { xs: 'column', md: 'row' },
+              gap: 2,
+              mb: 3,
+              alignItems: { xs: 'stretch', md: 'center' }
+            }}>
               <TextField
-                placeholder="Search Members"
+                placeholder="Search members..."
                 variant="outlined"
                 fullWidth
                 InputProps={{
                   startAdornment: (
                     <InputAdornment position="start">
-                      <Search />
+                      <SearchIcon />
                     </InputAdornment>
                   ),
                 }}
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 sx={{
-                  maxWidth: { sm: "400px" },
-                  bgcolor: "background.paper",
+                  maxWidth: { md: 400 },
+                  bgcolor: 'background.paper',
                   borderRadius: 1,
+                  '& .MuiOutlinedInput-root': {
+                    borderRadius: 2
+                  }
                 }}
               />
-              <Box
-                sx={{ display: "flex", gap: 1, flexWrap: "wrap", justifyContent: { xs: "center", sm: "flex-end" }, flex: 1 }}
-              >
-                <Button variant="outlined" color="primary" startIcon={<Add />} onClick={handleOpenAddDialog}>
-                  Add
+              <Box sx={{
+                display: 'flex',
+                gap: 1,
+                justifyContent: { xs: 'flex-end', md: 'flex-start' },
+                flexWrap: 'wrap'
+              }}>
+                <Button
+                  variant="contained"
+                  startIcon={<AddIcon />}
+                  onClick={handleOpenAddDialog}
+                  sx={{ borderRadius: 2 }}
+                >
+                  Add Member
                 </Button>
                 <Button
                   variant="outlined"
-                  color="primary"
-                  startIcon={<FileDownload />}
+                  startIcon={<ExportIcon />}
                   onClick={handleExportMembers}
                   disabled={isLoading || members.length === 0}
+                  sx={{ borderRadius: 2 }}
                 >
-                  {isLoading ? 'Exporting...' : 'Export'}
+                  Export
                 </Button>
               </Box>
             </Box>
 
-            {/* Members List */}
+            {/* Members Grid */}
             {isLoading && members.length === 0 ? (
-              <Box sx={{ display: "flex", justifyContent: "center", my: 4 }}>
-                <CircularProgress />
+              <Box sx={{ display: 'flex', justifyContent: 'center', my: 10 }}>
+                <CircularProgress size={60} />
               </Box>
+            ) : filteredMembers.length === 0 ? (
+              <Paper sx={{
+                p: 4,
+                textAlign: 'center',
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'center',
+                justifyContent: 'center',
+                minHeight: 300,
+                borderRadius: 2
+              }}>
+                <GroupIcon color="disabled" sx={{ fontSize: 80, mb: 2 }} />
+                <Typography variant="h6" color="textSecondary" gutterBottom>
+                  {searchQuery ? 'No matching members found' : 'No members available'}
+                </Typography>
+                <Typography variant="body1" color="textSecondary" sx={{ mb: 3 }}>
+                  {searchQuery ? 'Try a different search term' : 'Add your first team member to get started'}
+                </Typography>
+                <Button
+                  variant="contained"
+                  startIcon={<AddIcon />}
+                  onClick={handleOpenAddDialog}
+                  size="large"
+                  sx={{ borderRadius: 2 }}
+                >
+                  Add Member
+                </Button>
+              </Paper>
             ) : (
               <Grid container spacing={3}>
                 {filteredMembers.map((member) => (
-                  <Grid item xs={12} md={6} lg={4} key={member.id}>
-                    <Card sx={{ position: "relative" }}>
-                      <CardContent>
-                        <Box sx={{ display: "flex", alignItems: "center", mb: 2 }}>
-                          <Box sx={{ ml: 2, flex: 1 }}>
-                            <Typography variant="h6" component="div">
-                              {member.name}
-                            </Typography>
-                            <Typography variant="body2" color="text.secondary">
-                              {member.role}
-                            </Typography>
-                          </Box>
-                          <Avatar sx={{ bgcolor: "primary.main", width: 40, height: 40 }}>
+                  <Grid item xs={12} sm={6} md={4} key={member._id}>
+                    <Card sx={{
+                      height: '100%',
+                      display: 'flex',
+                      flexDirection: 'column',
+                      transition: 'all 0.3s ease',
+                      '&:hover': {
+                        transform: 'translateY(-5px)',
+                        boxShadow: 3
+                      }
+                    }}>
+                      <CardHeader
+                        avatar={
+                          <Avatar sx={{ bgcolor: 'primary.main', width: 48, height: 48 }}>
                             {getInitials(member.name)}
                           </Avatar>
-                        </Box>
+                        }
+                        title={
+                          <Typography variant="h6" fontWeight="bold" noWrap>
+                            {member.name}
+                          </Typography>
+                        }
+                        subheader={
+                          <Chip
+                            label={member.role}
+                            size="small"
+                            color="primary"
+                            variant="outlined"
+                            sx={{ mt: 0.5 }}
+                          />
+                        }
+                        sx={{ pb: 1 }}
+                      />
 
-                        <Grid container spacing={2}>
-                          <Grid item xs={12} >
-                            <Typography variant="body2" color="text.secondary">
-                              <strong>Email:</strong> {member.email}
+                      <CardContent sx={{ flexGrow: 1, pt: 0 }}>
+                        <Stack spacing={1.5}>
+                          <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                            <EmailIcon color="disabled" sx={{ mr: 1.5, fontSize: 20 }} />
+                            <Typography variant="body2" noWrap>
+                              {member.email}
                             </Typography>
-                          </Grid>
+                          </Box>
+
                           {member.phone && (
-                            <Grid item xs={12}>
-                              <Typography variant="body2" color="text.secondary">
-                                <strong>Phone:</strong> {member.phone}
+                            <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                              <PhoneIcon color="disabled" sx={{ mr: 1.5, fontSize: 20 }} />
+                              <Typography variant="body2">
+                                {member.phone}
                               </Typography>
-                            </Grid>
+                            </Box>
                           )}
-                        </Grid>
 
-                        {member.team && member.team.length > 0 && (
-                          <Box sx={{ mt: 2 }}>
-                            <Typography variant="body2" color="text.secondary">
-                              <strong>Teams</strong>
-                            </Typography>
-                            <Box sx={{ display: "flex", flexWrap: "wrap", gap: 1, mt: 1 }}>
-                              {member.team.map((team, index) => (
-                                <Chip key={index} label={team} size="small" />
-                              ))}
+                          {member.team?.length > 0 && (
+                            <Box>
+                              <Box sx={{ display: 'flex', alignItems: 'center', mb: 0.5 }}>
+                                <GroupIcon color="disabled" sx={{ mr: 1.5, fontSize: 20 }} />
+                                <Typography variant="body2" color="text.secondary">
+                                  Teams
+                                </Typography>
+                              </Box>
+                              <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5, ml: 3.5 }}>
+                                {member.team.map((team, index) => (
+                                  <Chip
+                                    key={index}
+                                    label={team}
+                                    size="small"
+                                    variant="outlined"
+                                  />
+                                ))}
+                              </Box>
                             </Box>
-                          </Box>
-                        )}
+                          )}
 
-                        {member.lists && member.lists.length > 0 && (
-                          <Box sx={{ mt: 2 }}>
-                            <Typography variant="body2" color="text.secondary">
-                              <strong>Lists</strong>
-                            </Typography>
-                            <Box sx={{ display: "flex", flexWrap: "wrap", gap: 1, mt: 1 }}>
-                              {member.lists.map((list, index) => (
-                                <Chip
-                                  key={index}
-                                  label={list}
-                                  size="small"
-                                  onDelete={() => { }}
-                                  deleteIcon={<Close fontSize="small" />}
-                                />
-                              ))}
+                          {/* Added Lists display section */}
+                          {member.lists?.length > 0 && (
+                            <Box>
+                              <Box sx={{ display: 'flex', alignItems: 'center', mb: 0.5 }}>
+                                <ListIcon color="disabled" sx={{ mr: 1.5, fontSize: 20 }} />
+                                <Typography variant="body2" color="text.secondary">
+                                  Lists
+                                </Typography>
+                              </Box>
+                              <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5, ml: 3.5 }}>
+                                {member.lists.map((list, index) => (
+                                  <Chip
+                                    key={index}
+                                    label={list}
+                                    size="small"
+                                    variant="outlined"
+                                    onDelete={() => { }} // Add your delete handler here
+                                    deleteIcon={<Close fontSize="small" />}
+                                  />
+                                ))}
+                              </Box>
                             </Box>
-                          </Box>
-                        )}
-
-                        <Box sx={{ display: "flex", justifyContent: "space-between", mt: 3, alignItems: "center" }}>
-                          <Button color="primary" onClick={() => handleOpenPasswordDialog(member)}>
-                            CHANGE PASSWORD
-                          </Button>
-                          <Box>
-                            <IconButton color="error" onClick={() => handleOpenDeleteDialog(member)}>
-                              <Delete />
-                            </IconButton>
-                            <IconButton color="primary" onClick={() => handleEditMember(member)}>
-                              <Edit />
-                            </IconButton>
-                          </Box>
-                        </Box>
+                          )}
+                        </Stack>
                       </CardContent>
+
+                      <Divider />
+
+                      <CardActions sx={{ justifyContent: 'space-between', p: 2 }}>
+                        <Tooltip title="Change Password">
+                          <IconButton
+                            color="primary"
+                            onClick={() => handleOpenPasswordDialog(member)}
+                          >
+                            <PasswordIcon />
+                          </IconButton>
+                        </Tooltip>
+
+                        <Box>
+                          <Tooltip title="Delete">
+                            <IconButton
+                              color="error"
+                              onClick={() => handleOpenDeleteDialog(member)}
+                              sx={{ mr: 1 }}
+                            >
+                              <DeleteIcon />
+                            </IconButton>
+                          </Tooltip>
+                          <Tooltip title="Edit">
+                            <IconButton
+                              color="primary"
+                              onClick={() => handleEditMember(member)}
+                            >
+                              <EditIcon />
+                            </IconButton>
+                          </Tooltip>
+                        </Box>
+                      </CardActions>
                     </Card>
                   </Grid>
                 ))}

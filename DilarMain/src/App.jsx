@@ -2,8 +2,6 @@ import React from "react";
 import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
 import Layout from "./components/Layout";
 import Dashboard from "./pages/Dashboard";
-import Reports from "./pages/Reports";
-import Graphs from "./components/Graphs";
 import Settings from "./pages/Settings";
 import PageNotFound from "./components/PageNotFound";
 import EditContactModal from "./Modals/EditContactModal";
@@ -15,6 +13,8 @@ import { store } from './app/store';
 import ProtectedRoute from './components/ProtectedRoute';
 import Members from "./pages/Members";
 import ContactManagement from "./pages/ContactManagement";
+import Attendance from "./pages/Attendance";
+
 
 function App() {
   return (
@@ -30,11 +30,10 @@ function App() {
             <Route path="/app/dashboard" element={<Dashboard />} />
             <Route path="/app/contacts" element={<ContactManagement />} />
             <Route path="/app/members" element={<Members />} />
-            <Route path="/app/reports" element={<Reports />} />
+            <Route path="/app/reports/attendance" element={<Attendance />} />
             <Route path="/app/settings" element={<Settings />} />
             <Route path="/app/settings/edit" element={<EditContactModal />} />
             <Route path="/app/settings/upload" element={<FileUploadModal />} />
-            <Route path="/app/graphs" element={<Graphs />} />
             <Route path="/app/teams" element={<TeamManagement />} />
             <Route path="*" element={<PageNotFound />} />
           </Route>

@@ -1,7 +1,36 @@
 import React, { useState } from 'react';
 import { Outlet } from 'react-router-dom';
+import { styled } from '@mui/material/styles';
+import { Box } from '@mui/material';
 import Sidebar from './Sidebar';
 import Navbar from './Navbar';
+
+const LayoutContainer = styled(Box)({
+  display: 'flex',
+  minHeight: '100vh',
+  backgroundColor: '#F1F5F9'
+});
+
+const MainContent = styled(Box)(({ theme, sidebarwidth }) => ({
+  flex: 1,
+  display: 'flex',
+  flexDirection: 'column',
+  marginLeft: sidebarwidth,
+  minWidth: 0,
+  transition: theme.transitions.create('margin', {
+    easing: theme.transitions.easing.sharp,
+    duration: theme.transitions.duration.leavingScreen,
+  }),
+}));
+
+const ContentArea = styled(Box)({
+  flex: 1,
+  padding: '16px',
+  overflow: 'hidden',
+  display: 'flex',
+  flexDirection: 'column',
+  minHeight: 0
+});
 
 function Layout() {
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
@@ -11,16 +40,17 @@ function Layout() {
   };
 
   return (
-    <div className="flex h-screen bg-[#F1F5F9]">
-      <Sidebar isOpen={isSidebarOpen} />
-      <div className={`flex flex-col flex-1 transition-all duration-300 ${isSidebarOpen ? 'ml-64' : 'ml-20'}`}>
-        <Navbar isOpen={isSidebarOpen}/>
-        <Sidebar toggleSidebar={toggleSidebar} isSidebarOpen={isSidebarOpen} />
-        <main className="flex-1 p-4 overflow-y-auto">
+    <LayoutContainer>
+      <Sidebar toggleSidebar={toggleSidebar} isSidebarOpen={isSidebarOpen} />
+      
+      <MainContent sidebarwidth={isSidebarOpen ? '256px' : '80px'}>
+        <Navbar toggleSidebar={toggleSidebar} isSidebarOpen={isSidebarOpen} />
+        
+        <ContentArea>
           <Outlet />
-        </main>
-      </div>
-    </div>
+        </ContentArea>
+      </MainContent>
+    </LayoutContainer>
   );
 }
 

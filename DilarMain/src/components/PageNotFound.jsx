@@ -1,65 +1,113 @@
-// components/PageNotFound.jsx
 import { useNavigate } from 'react-router-dom';
+import { 
+  Box,
+  Button,
+  Typography,
+  useTheme
+} from '@mui/material';
+import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 
 const PageNotFound = () => {
   const navigate = useNavigate();
+  const theme = useTheme();
 
   return (
-    <div className="h-full flex items-center justify-center p-4 bg-stone-200">
-      <div className="max-w-2xl w-full space-y-8 text-center">
-        <div className="space-y-6">
-          {/* 404 Number */}
-          <h1 className="text-8xl sm:text-9xl font-bold text-blue-600 animate-pulse">404</h1>
-          <h2 className="text-2xl sm:text-3xl font-extrabold text-gray-900">
-              Page Not Found
-            </h2>
-          {/* Illustration Image */}
-          <img
-            src="https://cdn.dribbble.com/users/1175431/screenshots/6188233/404-error-dribbble-800x600.gif"
-            alt="404 Illustration"
-            className="mx-auto h-48 sm:h-64 w-full object-contain"
-          />
-          
-          {/* Message */}
-          <div className="space-y-2">
-            
-            <p className="text-lg sm:text-xl text-gray-600">
-              The page you're looking for has disappeared into the digital void.
-            </p>
-          </div>
+    <Box
+      sx={{
+        height: '100vh',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        p: 4,
+        backgroundColor: theme.palette.grey[200]
+      }}
+    >
+      <Box
+        sx={{
+          maxWidth: 700,
+          width: '100%',
+          textAlign: 'center',
+          display: 'flex',
+          flexDirection: 'column',
+          gap: 4
+        }}
+      >
+        {/* 404 Number */}
+        <Typography
+          variant="h1"
+          sx={{
+            fontSize: { xs: '6rem', sm: '8rem' },
+            fontWeight: 'bold',
+            color: 'primary.main',
+            animation: 'pulse 2s infinite',
+            '@keyframes pulse': {
+              '0%': { opacity: 1 },
+              '50%': { opacity: 0.6 },
+              '100%': { opacity: 1 }
+            }
+          }}
+        >
+          404
+        </Typography>
 
-          {/* Back to Home Button */}
-          <button
-            onClick={() => navigate('/')}
-            className="inline-flex items-center px-5 py-2.5 sm:px-6 sm:py-3 border border-transparent text-sm sm:text-base font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 transition-all duration-300"
-          >
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              className="h-4 w-4 sm:h-5 sm:w-5 mr-2"
-              viewBox="0 0 20 20"
-              fill="currentColor"
-            >
-              <path
-                fillRule="evenodd"
-                d="M10 18a8 8 0 100-16 8 8 0 000 16zm.707-10.293a1 1 0 00-1.414-1.414l-3 3a1 1 0 000 1.414l3 3a1 1 0 001.414-1.414L9.414 11H13a1 1 0 100-2H9.414l1.293-1.293z"
-                clipRule="evenodd"
-              />
-            </svg>
-            Return to Dashboard
-          </button>
-        </div>
-      </div>
-    </div>
+        {/* Title */}
+        <Typography
+          variant="h2"
+          sx={{
+            fontSize: { xs: '1.5rem', sm: '2rem' },
+            fontWeight: 'fontWeightBold',
+            color: 'text.primary'
+          }}
+        >
+          Page Not Found
+        </Typography>
+
+        {/* Illustration Image */}
+        <Box
+          component="img"
+          src="https://cdn.dribbble.com/users/1175431/screenshots/6188233/404-error-dribbble-800x600.gif"
+          alt="404 Illustration"
+          sx={{
+            mx: 'auto',
+            height: { xs: 192, sm: 256 },
+            width: '100%',
+            objectFit: 'contain'
+          }}
+        />
+
+        {/* Message */}
+        <Typography
+          variant="body1"
+          sx={{
+            fontSize: { xs: '1rem', sm: '1.25rem' },
+            color: 'text.secondary'
+          }}
+        >
+          The page you're looking for has disappeared into the digital void.
+        </Typography>
+
+        {/* Back to Home Button */}
+        <Button
+          onClick={() => navigate('/app/dashboard')}
+          variant="contained"
+          color="primary"
+          startIcon={<ArrowBackIcon />}
+          sx={{
+            px: { xs: 3, sm: 4 },
+            py: { xs: 1.5, sm: 2 },
+            fontSize: { xs: '0.875rem', sm: '1rem' },
+            mx: 'auto',
+            transition: 'all 0.3s',
+            '&:hover': {
+              backgroundColor: 'primary.dark'
+            }
+          }}
+        >
+          Return to Dashboard
+        </Button>
+      </Box>
+    </Box>
   );
 };
 
 export default PageNotFound;
-
-
-
-
-
-
-
-
-

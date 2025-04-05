@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react"
+import { useCallback, useEffect, useState } from "react";
 import {
   Box,
   Typography,
@@ -28,8 +28,9 @@ import {
   useMediaQuery,
   useTheme,
   Snackbar,
-  Alert
-} from "@mui/material"
+  Alert,
+  TablePagination
+} from "@mui/material";
 import {
   Search,
   Add,
@@ -40,11 +41,8 @@ import {
   Refresh,
   GetApp,
   People,
-} from "@mui/icons-material"
-import {
-  createTheme,
-  ThemeProvider
-} from "@mui/material/styles";
+} from "@mui/icons-material";
+import { createTheme, ThemeProvider } from "@mui/material/styles";
 import { useSelector } from "react-redux";
 import { selectCurrentToken, selectCurrentUser } from "../features/authSlice";
 import axios from "axios";
@@ -69,42 +67,40 @@ const theme = createTheme({
 });
 
 const CRMComponent = () => {
-  const themes = useTheme()
-  const isMobile = useMediaQuery(themes.breakpoints.down("sm"))
+  const themes = useTheme();
+  const isMobile = useMediaQuery(themes.breakpoints.down("sm"));
 
   // Data from redux
   const token = useSelector(selectCurrentToken);
   const user = useSelector(selectCurrentUser);
-  const { currentTeam } = useSelector(state => state.team);
-
+  const { currentTeam } = useSelector((state) => state.team);
 
   // States for various dialogs
-  const [selectedList, setSelectedList] = useState("")
-  const [currentList, setCurrentList] = useState(null)
-  const [openAddContact, setOpenAddContact] = useState(false)
-  const [openImportContacts, setOpenImportContacts] = useState(false)
-  const [openNewList, setOpenNewList] = useState(false)
-  const [openEditList, setOpenEditList] = useState(false)
-  const [openRemoveList, setOpenRemoveList] = useState(false)
-  const [openEmptyList, setOpenEmptyList] = useState(false)
-  const [openAssignMembers, setOpenAssignMembers] = useState(false)
+  const [selectedList, setSelectedList] = useState("");
+  const [currentList, setCurrentList] = useState(null);
+  const [openAddContact, setOpenAddContact] = useState(false);
+  const [openImportContacts, setOpenImportContacts] = useState(false);
+  const [openNewList, setOpenNewList] = useState(false);
+  const [openEditList, setOpenEditList] = useState(false);
+  const [openRemoveList, setOpenRemoveList] = useState(false);
+  const [openEmptyList, setOpenEmptyList] = useState(false);
+  const [openAssignMembers, setOpenAssignMembers] = useState(false);
   const [members, setMembers] = useState([]);
   const [assignMembers, setAssignMembers] = useState([]);
-  const [tempAssignMembers, setTempAssignMembers] = useState([]); 
+  const [tempAssignMembers, setTempAssignMembers] = useState([]);
   const [assigningContacts, setAssigningContacts] = useState(false);
   const [memberToRemove, setMemberToRemove] = useState(null);
   const [removingMember, setRemovingMember] = useState(false);
-  const [lists, setLists] = useState([])
-  const [contacts, setContacts] = useState([])
+  const [lists, setLists] = useState([]);
+  const [contacts, setContacts] = useState([]);
   const [selectedFile, setSelectedFile] = useState(null);
   const [newListName, setNewListName] = useState("");
-  const [editListName, setEditListName] = useState("")
+  const [editListName, setEditListName] = useState("");
   const [snackbar, setSnackbar] = useState({
     open: false,
     message: "",
     severity: "success",
   });
-
 
   // States for form data
   const [newContact, setNewContact] = useState({
@@ -115,19 +111,27 @@ const CRMComponent = () => {
     email: "",
     dealValue: "",
     leadScore: "",
-    disposition: "",
+    disposition: "NEW",
     address: "",
     extra: "",
     remarks: "",
     note: "",
-  })
+  });
 
   // States for table data
-  const [page, setPage] = useState(0)
-  const [rowsPerPage, setRowsPerPage] = useState(5)
-  const [selectedDisposition, setSelectedDisposition] = useState("All Dispositions")
-  const [searchQuery, setSearchQuery] = useState("")
+  const [page, setPage] = useState(0);
+  const [rowsPerPage, setRowsPerPage] = useState(5);
+  const [selectedDisposition, setSelectedDisposition] = useState("All Dispositions");
+  const [searchQuery, setSearchQuery] = useState("");
 
+  // Helper function to show snackbar
+  const showSnackbar = (message, severity = "success") => {
+    setSnackbar({ open: true, message, severity });
+  };
+
+  const handleCloseSnackbar = () => {
+    setSnackbar({ ...snackbar, open: false });
+  };
 
   // Fetch all members
   const fetchMembers = useCallback(async () => {
@@ -135,18 +139,17 @@ const CRMComponent = () => {
 
     try {
       const response = await axios.get(
-        `${API_BASE_URL}/api/member/fetchAllMembersInTeam?teamId=${currentTeam._id}`
+        `${API_BASE_URL}/api/member/fetchAllMembersInTeam?teamId=${currentTeam._id}`,
+        {
+          headers: { Authorization: `Bearer ${token}` }
+        }
       );
       setMembers(response.data.data);
     } catch (error) {
       console.error("Error fetching members:", error);
+      showSnackbar("Failed to load members", "error");
     }
-  }, [currentList?._id]);
-
-  useEffect(() => {
-    fetchMembers();
-  }, [fetchMembers]);
-
+  }, [currentTeam?._id, token]);
 
   // Fetch all lists
   const fetchLists = useCallback(async () => {
@@ -161,31 +164,22 @@ const CRMComponent = () => {
       const listsData = response.data.data;
       setLists(listsData);
 
-      // Collect ALL assigned member IDs from ALL lists
-      const allAssignedMemberIds = listsData
-        .filter(list => list.assignedTo)
-        .map(list => list.assignedTo);
-
-      setAssignMembers(allAssignedMemberIds);
-      setTempAssignMembers(allAssignedMemberIds)
-
       if (listsData.length > 0) {
         const firstList = listsData[0];
         setSelectedList(firstList.name);
         setCurrentList(firstList);
+        
+        // Set assigned members for the first list
+        if (firstList.assignedTo) {
+          setAssignMembers([firstList.assignedTo]);
+          setTempAssignMembers([firstList.assignedTo]);
+        }
       }
-
-      fetchMembers();
     } catch (err) {
       console.error("Fetch error:", err);
       showSnackbar("Failed to load lists", "error");
     }
   }, [currentTeam?._id, token]);
-
-  useEffect(() => {
-    fetchLists();
-  }, [fetchLists]);
-
 
   // Fetch all list contacts
   const fetchContacts = useCallback(async () => {
@@ -195,59 +189,65 @@ const CRMComponent = () => {
       const response = await axios.get(
         `${API_BASE_URL}/api/contacts/fetchAllListContacts`,
         {
-          params: {
-            listId: currentList._id
-          },
-          headers: {
-            Authorization: `Bearer ${token}`
-          }
+          params: { listId: currentList._id },
+          headers: { Authorization: `Bearer ${token}` }
         }
       );
-
-      console.log(response.data);
-      setContacts(response.data);
+      setContacts(response.data || []);
     } catch (error) {
       console.error("Error fetching contacts:", error);
       showSnackbar(
         error.response?.data?.msg || "Failed to load contacts",
         "error"
       );
-      setContacts([]); // Clear contacts on error
+      setContacts([]);
     }
   }, [currentList?._id, token]);
 
   useEffect(() => {
-    fetchContacts();
-  }, [fetchContacts]);
+    fetchMembers();
+    fetchLists();
+  }, [fetchMembers, fetchLists]);
 
+  useEffect(() => {
+    if (currentList) {
+      fetchContacts();
+    }
+  }, [currentList, fetchContacts]);
 
+  // Handle list selection change
+  const handleListChange = (event) => {
+    const selectedListName = event.target.value;
+    const list = lists.find(list => list.name === selectedListName);
+    if (list) {
+      setSelectedList(selectedListName);
+      setCurrentList(list);
+      setAssignMembers(list.assignedTo ? [list.assignedTo] : []);
+      setTempAssignMembers(list.assignedTo ? [list.assignedTo] : []);
+    }
+  };
 
   // Handle add contact
   const handleContactInputChange = (e) => {
-    const { name, value } = e.target
+    const { name, value } = e.target;
     setNewContact({
       ...newContact,
       [name]: value,
-    })
-  }
+    });
+  };
 
   const handleAddContact = async () => {
+    if (!currentList?._id) {
+      showSnackbar("Please select a list first", "error");
+      return;
+    }
+
     try {
       const response = await axios.post(
         `${API_BASE_URL}/api/contacts/addContact`,
         {
-          number: newContact.number,
-          secondaryNumber: newContact.secondaryNumber,
-          name: newContact.name,
-          companyName: newContact.companyName,
-          email: newContact.email,
-          dealValue: newContact.dealValue,
-          leadScore: newContact.leadScore,
-          disposition: newContact.disposition || 'NEW',
-          address: newContact.address,
-          extra: newContact.extra,
-          remarks: newContact.remarks,
-          note: newContact.note
+          ...newContact,
+          listId: currentList._id
         },
         {
           headers: {
@@ -256,15 +256,7 @@ const CRMComponent = () => {
         }
       );
 
-      const newContactData = {
-        ...response.data.contact,
-        id: contacts.length > 0 ? Math.max(...contacts.map((c) => c.id)) + 1 : 1,
-        createdOn: new Date().toISOString().split("T")[0],
-        assignee: "Unassigned",
-        totalDuration: "00:00:00"
-      };
-
-      setContacts([...contacts, newContactData]);
+      setContacts([...contacts, response.data.contact]);
       setNewContact({
         number: "",
         secondaryNumber: "",
@@ -273,7 +265,7 @@ const CRMComponent = () => {
         email: "",
         dealValue: "",
         leadScore: "",
-        disposition: "",
+        disposition: "NEW",
         address: "",
         extra: "",
         remarks: "",
@@ -281,7 +273,7 @@ const CRMComponent = () => {
       });
 
       setOpenAddContact(false);
-      showSnackbar(response.data.msg || "Contact added successfully!");
+      showSnackbar("Contact added successfully!");
     } catch (error) {
       console.error('Error adding contact:', error);
       showSnackbar(
@@ -291,15 +283,9 @@ const CRMComponent = () => {
     }
   };
 
-
-
   // Handle CSV file upload
   const handleFileChange = (event) => {
     setSelectedFile(event.target.files[0]);
-  };
-
-  const handleListChange = (event) => {
-    setSelectedList(event.target.value);
   };
 
   const handleUpload = async () => {
@@ -307,12 +293,12 @@ const CRMComponent = () => {
       showSnackbar("Please select both a file and a list", "error");
       return;
     }
-  
+
     const formData = new FormData();
     formData.append('file', selectedFile);
     formData.append('listId', currentList._id);
-    formData.append('countryCode', 'IN'); 
-  
+    formData.append('countryCode', 'IN');
+
     try {
       const response = await axios.post(
         `${API_BASE_URL}/api/contacts/addContacts-csv`,
@@ -324,10 +310,9 @@ const CRMComponent = () => {
           }
         }
       );
-  
+
       setOpenImportContacts(false);
       
-      // Handle the detailed response from backend
       if (response.data.addedCount === 0) {
         showSnackbar(
           `No new contacts added. ${response.data.duplicatesSkipped} duplicates found.`,
@@ -341,98 +326,83 @@ const CRMComponent = () => {
       }
       
       fetchContacts();
-      fetchLists();
     } catch (error) {
       console.error('Error uploading file:', error);
-    
-      if (error.response?.data?.msg) {
-        showSnackbar(error.response.data.msg, "error");
-        
-        if (error.response.data.duplicatesSkipped) {
-          showSnackbar(
-            `${error.response.data.duplicatesSkipped} duplicates were found`,
-            "warning"
-          );
-        }
-      } else {
-        showSnackbar("Error uploading file", "error");
-      }
+      showSnackbar(
+        error.response?.data?.msg || "Error uploading file",
+        "error"
+      );
     }
   };
-
-
 
   // Handle new list creation
   const handleCreateNewList = async () => {
-    if (newListName.trim() !== "") {
-      try {
-        const response = await axios.post(
-          `${API_BASE_URL}/api/lists/addList`,
-          {
-            name: newListName,
-            teamId: currentTeam._id
+    if (!newListName.trim()) {
+      showSnackbar("List name cannot be empty", "error");
+      return;
+    }
+
+    try {
+      const response = await axios.post(
+        `${API_BASE_URL}/api/lists/addList`,
+        {
+          name: newListName,
+          teamId: currentTeam._id
+        },
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
           },
-          {
-            headers: {
-              Authorization: `Bearer ${token}`,
-            },
-          }
-        );
+        }
+      );
 
-        setLists([...lists, newListName]);
-        setNewListName("");
-        setOpenNewList(false);
-
-        showSnackbar("List created successfully!");
-        fetchLists()
-      } catch (error) {
-        console.error("Error creating list:", error.response?.data || error.message);
-        showSnackbar(error.response?.data?.msg || "Error creating list", "error");
-      }
+      setLists([...lists, response.data.list]);
+      setNewListName("");
+      setOpenNewList(false);
+      showSnackbar("List created successfully!");
+      fetchLists();
+    } catch (error) {
+      console.error("Error creating list:", error);
+      showSnackbar(error.response?.data?.msg || "Error creating list", "error");
     }
   };
-
 
   // Handle edit list
   const handleEditList = async () => {
-    if (editListName.trim() !== "") {
-      try {
-        const response = await axios.put(
-          `${API_BASE_URL}/api/lists/updateList/${currentList._id}`, // Fixed endpoint
-          {
-            name: editListName
+    if (!editListName.trim()) {
+      showSnackbar("List name cannot be empty", "error");
+      return;
+    }
+
+    try {
+      const response = await axios.put(
+        `${API_BASE_URL}/api/lists/updateList/${currentList._id}`,
+        { name: editListName },
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+            'Content-Type': 'application/json'
           },
-          {
-            headers: {
-              Authorization: `Bearer ${token}`,
-              'Content-Type': 'application/json'
-            },
-          }
-        );
+        }
+      );
 
-        // Update all relevant states
-        const updatedList = response.data.list; // Use the updated list from backend
-        setLists(lists.map(list =>
-          list._id === updatedList._id ? updatedList : list
-        ));
-        setCurrentList(updatedList);
-        setSelectedList(updatedList);
-        setEditListName("");
-        setOpenEditList(false);
+      setLists(lists.map(list =>
+        list._id === currentList._id ? response.data.list : list
+      ));
+      setCurrentList(response.data.list);
+      setSelectedList(response.data.list.name);
+      setEditListName("");
+      setOpenEditList(false);
 
-        showSnackbar("List updated successfully!");
-        fetchLists()
-      } catch (error) {
-        console.error("Error updating list:", error);
-        showSnackbar(
-          error.response?.data?.msg || "Error updating list",
-          "error"
-        );
-      }
+      showSnackbar("List updated successfully!");
+    } catch (error) {
+      console.error("Error updating list:", error);
+      showSnackbar(
+        error.response?.data?.msg || "Error updating list",
+        "error"
+      );
     }
   };
-
-
 
   // Handle remove list
   const handleRemoveList = async () => {
@@ -448,12 +418,17 @@ const CRMComponent = () => {
 
       const updatedLists = lists.filter((list) => list._id !== currentList._id);
       setLists(updatedLists);
-      setSelectedList(updatedLists[0].name || null); // Select first remaining list or null
-      setCurrentList(updatedLists[0] || null); // Also update currentList if you're using it
+      
+      if (updatedLists.length > 0) {
+        setSelectedList(updatedLists[0].name);
+        setCurrentList(updatedLists[0]);
+      } else {
+        setSelectedList("");
+        setCurrentList(null);
+      }
+      
       setOpenRemoveList(false);
-
       showSnackbar("List removed successfully!");
-      fetchLists()
     } catch (error) {
       console.error("Error removing list:", error);
       showSnackbar(
@@ -462,8 +437,6 @@ const CRMComponent = () => {
       );
     }
   };
-
-
 
   // Handle empty list
   const handleEmptyList = async () => {
@@ -489,38 +462,31 @@ const CRMComponent = () => {
     }
   };
 
-
-
   // Handle Assign members
   const handleMemberToggle = (memberId) => {
-    // If already has an assigned member, show warning and replace it
-    if (assignMembers.length > 0) {
-      showSnackbar("List can only have one assigned member. Remove current assignment.", "error");
-      return;
+    // If member is already assigned, unassign them
+    if (assignMembers.includes(memberId)) {
+      setAssignMembers(assignMembers.filter(id => id !== memberId));
+    } else {
+      // Otherwise assign the new member (only one allowed)
+      setAssignMembers([memberId]);
     }
-
-    // Otherwise add the new member
-    setAssignMembers([memberId]);
   };
 
   const handleAssignContacts = async () => {
     if (assignMembers.length === 0) {
-      showSnackbar("Please select at least one member");
+      showSnackbar("Please select at least one member", "error");
       return;
     }
 
     try {
       setAssigningContacts(true);
-      // Assuming you want to assign to the first selected member
       const memberId = assignMembers[0];
       const listId = currentList._id;
 
       const response = await axios.post(
         `${API_BASE_URL}/api/contacts/assignContactsFromList`,
-        {
-          memberId,
-          listId,
-        },
+        { memberId, listId },
         {
           headers: {
             Authorization: `Bearer ${token}`,
@@ -529,12 +495,13 @@ const CRMComponent = () => {
         }
       );
 
-      showSnackbar(response.data.msg || "Successfully assigned list, Now the member can dial this list from the app");
+      showSnackbar(response.data.msg || "Successfully assigned list");
       setOpenAssignMembers(false);
+      setTempAssignMembers(assignMembers);
       fetchLists();
     } catch (error) {
       console.error("Error assigning contacts:", error);
-      showSnackbar(error.response?.data?.msg || "Failed to assign contacts");
+      showSnackbar(error.response?.data?.msg || "Failed to assign contacts", "error");
     } finally {
       setAssigningContacts(false);
     }
@@ -561,123 +528,110 @@ const CRMComponent = () => {
         }
       );
 
-     
       setMemberToRemove(null);
+      setAssignMembers([]);
+      setTempAssignMembers([]);
       showSnackbar("Member removed from assignment successfully");
-      fetchLists()
+      fetchLists();
     } catch (error) {
       console.error("Error removing assignment:", error);
-      showSnackbar(error.response?.data?.msg || "Failed to remove assignment");
+      showSnackbar(error.response?.data?.msg || "Failed to remove assignment", "error");
     } finally {
       setRemovingMember(false);
     }
   };
 
+  // Handle exporting contacts to CSV
+  const exportContactsToCSV = () => {
+    if (contacts.length === 0) {
+      showSnackbar('No contacts to export', 'warning');
+      return;
+    }
 
+    try {
+      const fields = [
+        'Phone', 
+        'Name', 
+        'Company Name', 
+        'Email', 
+        'Disposition',
+        'Address',
+        'Extra',
+        'Remarks',
+        'Note'
+      ];
 
+      const data = contacts.map(contact => ({
+        'Phone': contact.number || '',
+        'Name': contact.name || '',
+        'Company Name': contact.companyName || '',
+        'Email': contact.email || '',
+        'Disposition': contact.disposition || '',
+        'Address': contact.address || '',
+        'Extra': contact.extra || '',
+        'Remarks': contact.remarks || '',
+        'Note': contact.note || ''
+      }));
 
-// Handle exporting contacts to CSV
-const exportContactsToCSV = () => {
-  if (contacts.length === 0) {
-    showSnackbar('No contacts to export', 'warning');
-    return;
-  }
+      let csv = fields.join(',') + '\n';
+      data.forEach(row => {
+        csv += fields.map(field => 
+          `"${row[field]?.toString().replace(/"/g, '""') || ''}"`
+        ).join(',') + '\n';
+      });
 
-  try {
-    const fields = [
-      'Phone', 
-      'Name', 
-      'Company Name', 
-      'Email', 
-      'Disposition',
-      'Address',
-      'Extra',
-      'Remarks',
-      'Note'
-    ];
+      const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', `${selectedList}_contacts_${new Date().toISOString().slice(0, 10)}.csv`);
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      
+      showSnackbar('Contacts exported successfully');
+    } catch (error) {
+      console.error('Export failed:', error);
+      showSnackbar('Failed to export contacts', 'error');
+    }
+  };
 
-    // Transform contact data for CSV
-    const data = contacts.map(contact => ({
-      'Phone': contact.number || '',
-      'Name': contact.name || '',
-      'Company Name': contact.companyName || '',
-      'Email': contact.email || '',
-      'Disposition': contact.disposition || '',
-      'Address': contact.address || '',
-      'Extra': contact.extra || '',
-      'Remarks': contact.remarks || '',
-      'Note': contact.note || ''
-    }));
-
-    // Convert to CSV format
-    let csv = fields.join(',') + '\n';
-    data.forEach(row => {
-      csv += fields.map(field => 
-        `"${row[field]?.toString().replace(/"/g, '""') || ''}"`
-      ).join(',') + '\n';
-    });
-
-    // Create and trigger download
-    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.href = url;
-    link.setAttribute('download', `${selectedList}_contacts_${new Date().toISOString().slice(0, 10)}.csv`);
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    
-    showSnackbar('Contacts exported successfully');
-  } catch (error) {
-    console.error('Export failed:', error);
-    showSnackbar('Failed to export contacts', 'error');
-  }
-};
-
-
-
-  // useEffect for update edit label field with currentList
+  // Update edit label field with currentList
   useEffect(() => {
     if (openEditList && currentList) {
       setEditListName(currentList.name);
     }
   }, [openEditList, currentList]);
 
-
-  // Helper function to show snackbar
-  const showSnackbar = (message, severity = "success") => {
-    setSnackbar({ open: true, message, severity })
-  }
-
-  // Handle closing snackbar
-  const handleCloseSnackbar = () => {
-    setSnackbar({ ...snackbar, open: false })
-  }
-
   // Handle pagination
   const handleChangePage = (event, newPage) => {
-    setPage(newPage)
-  }
+    setPage(newPage);
+  };
 
   const handleChangeRowsPerPage = (event) => {
-    setRowsPerPage(Number.parseInt(event.target.value, 10))
-    setPage(0)
-  }
+    setRowsPerPage(parseInt(event.target.value, 10));
+    setPage(0);
+  };
 
   // Filter contacts based on search and disposition
   const filteredContacts = contacts.filter((contact) => {
     const matchesSearch =
       searchQuery === "" ||
-      contact.number.includes(searchQuery) ||
-      contact.name.toLowerCase().includes(searchQuery.toLowerCase())
+      (contact.number && contact.number.includes(searchQuery)) ||
+      (contact.name && contact.name.toLowerCase().includes(searchQuery.toLowerCase()));
 
-    const matchesDisposition = selectedDisposition === "All Dispositions" || contact.disposition === selectedDisposition
+    const matchesDisposition = 
+      selectedDisposition === "All Dispositions" || 
+      contact.disposition === selectedDisposition;
 
-    return matchesSearch && matchesDisposition
-  })
+    return matchesSearch && matchesDisposition;
+  });
 
   // Get current page of contacts
-  const currentContacts = filteredContacts.slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage)
+  const currentContacts = filteredContacts.slice(
+    page * rowsPerPage,
+    page * rowsPerPage + rowsPerPage
+  );
 
   return (
     <ThemeProvider theme={theme}>
@@ -705,7 +659,7 @@ const exportContactsToCSV = () => {
               <FormControl fullWidth size="small">
                 <Select
                   value={selectedList}
-                  onChange={(e) => setSelectedList(e.target.value)}
+                  onChange={handleListChange}
                   sx={{
                     bgcolor: "white",
                     "& .MuiOutlinedInput-notchedOutline": {
@@ -714,7 +668,7 @@ const exportContactsToCSV = () => {
                   }}
                 >
                   {lists.map((list) => (
-                    <MenuItem key={list._id} value={list.name} onClick={() => setCurrentList(list)}>
+                    <MenuItem key={list._id} value={list.name}>
                       {list.name}
                     </MenuItem>
                   ))}
@@ -823,6 +777,7 @@ const exportContactsToCSV = () => {
                 variant="outlined"
                 startIcon={<Edit />}
                 onClick={() => setOpenEditList(true)}
+                disabled={!currentList}
                 sx={{
                   width: "100%",
                   display: "flex",
@@ -854,6 +809,7 @@ const exportContactsToCSV = () => {
                 variant="outlined"
                 startIcon={<Delete />}
                 onClick={() => setOpenRemoveList(true)}
+                disabled={!currentList}
                 sx={{
                   width: "100%",
                   display: "flex",
@@ -885,6 +841,7 @@ const exportContactsToCSV = () => {
                 variant="outlined"
                 startIcon={<RemoveCircle />}
                 onClick={() => setOpenEmptyList(true)}
+                disabled={!currentList}
                 sx={{
                   width: "100%",
                   display: "flex",
@@ -915,6 +872,7 @@ const exportContactsToCSV = () => {
               <Button
                 variant="outlined"
                 startIcon={<Refresh />}
+                onClick={fetchContacts}
                 sx={{
                   width: "100%",
                   display: "flex",
@@ -936,7 +894,7 @@ const exportContactsToCSV = () => {
                 }}
               >
                 <Typography variant={isMobile ? "caption" : "body2"} sx={{ mt: isMobile ? 0.5 : 1, textAlign: "center" }}>
-                  Reclaim List
+                  Refresh
                 </Typography>
               </Button>
             </Grid>
@@ -946,6 +904,7 @@ const exportContactsToCSV = () => {
                 variant="outlined"
                 startIcon={<GetApp />}
                 onClick={exportContactsToCSV}
+                disabled={contacts.length === 0}
                 sx={{
                   width: "100%",
                   display: "flex",
@@ -977,6 +936,7 @@ const exportContactsToCSV = () => {
                 variant="outlined"
                 startIcon={<People />}
                 onClick={() => setOpenAssignMembers(true)}
+                disabled={!currentList}
                 sx={{
                   width: "100%",
                   display: "flex",
@@ -1017,15 +977,6 @@ const exportContactsToCSV = () => {
                       borderColor: "#CED1D5",
                     },
                   }}
-                  startAdornment={
-                    <InputAdornment position="start">
-                      <Box sx={{ display: "flex", alignItems: "center" }}>
-                        <Typography variant="body2" sx={{ mr: 1 }}>
-                          All Dispositions
-                        </Typography>
-                      </Box>
-                    </InputAdornment>
-                  }
                 >
                   <MenuItem value="All Dispositions">All Dispositions</MenuItem>
                   <MenuItem value="SKIP">SKIP</MenuItem>
@@ -1079,7 +1030,7 @@ const exportContactsToCSV = () => {
               <TableHead sx={{ bgcolor: "#F1F5F9" }}>
                 <TableRow>
                   <TableCell>Phone</TableCell>
-                  {/* <TableCell>Secondary Phone</TableCell> */}
+                  <TableCell>Secondary Phone</TableCell>
                   <TableCell>Name</TableCell>
                   <TableCell>Company Name</TableCell>
                   <TableCell>Email</TableCell>
@@ -1092,124 +1043,104 @@ const exportContactsToCSV = () => {
                 </TableRow>
               </TableHead>
               <TableBody>
-                {currentContacts.map((contact) => (
-                  <TableRow key={contact.id} hover>
-                    <TableCell>{contact.number}</TableCell>
-                    {/* <TableCell>{contact.secondaryNumber}</TableCell> */}
-                    <TableCell>{contact.name}</TableCell>
-                    <TableCell>{contact.companyName}</TableCell>
-                    <TableCell>{contact.email}</TableCell>
-                    <TableCell>
-                      <Chip
-                        label={contact.disposition}
-                        size="small"
-                        sx={{
-                          bgcolor: "#4CAF50",
-                          color: "white",
-                          fontWeight: "bold",
-                        }}
-                      />
+                {currentContacts.length > 0 ? (
+                  currentContacts.map((contact) => (
+                    <TableRow key={contact._id || contact.id} hover>
+                      <TableCell>{contact.number}</TableCell>
+                      <TableCell>{contact.secondaryNumber}</TableCell>
+                      <TableCell>{contact.name}</TableCell>
+                      <TableCell>{contact.companyName}</TableCell>
+                      <TableCell>{contact.email}</TableCell>
+                      <TableCell>
+                        <Chip
+                          label={contact.disposition}
+                          size="small"
+                          sx={{
+                            bgcolor: "#4CAF50",
+                            color: "white",
+                            fontWeight: "bold",
+                          }}
+                        />
+                      </TableCell>
+                      <TableCell>{contact.address}</TableCell>
+                      <TableCell>{contact.extra}</TableCell>
+                      <TableCell>{contact.remarks}</TableCell>
+                      <TableCell>{contact.note}</TableCell>
+                      <TableCell>{contact.totalDuration || "00:00:00"}</TableCell>
+                    </TableRow>
+                  ))
+                ) : (
+                  <TableRow>
+                    <TableCell colSpan={10} align="center">
+                      No contacts found
                     </TableCell>
-                    <TableCell>{contact.address}</TableCell>
-                    <TableCell>{contact.extra}</TableCell>
-                    <TableCell>{contact.remarks}</TableCell>
-                    <TableCell>{contact.note}</TableCell>
-                    <TableCell>{contact.totalDuration}</TableCell>
                   </TableRow>
-                ))}
+                )}
               </TableBody>
             </Table>
           </TableContainer>
 
-          <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap" }}>
-            <Box sx={{ display: "flex", alignItems: "center" }}>
-              <Typography variant="body2" sx={{ mr: 2 }}>
-                Rows per page:
+          <TablePagination
+            rowsPerPageOptions={[5, 10, 25]}
+            component="div"
+            count={filteredContacts.length}
+            rowsPerPage={rowsPerPage}
+            page={page}
+            onPageChange={handleChangePage}
+            onRowsPerPageChange={handleChangeRowsPerPage}
+          />
+
+          {/* Assignments */}
+          <Paper elevation={1} sx={{ p: 3, mt: 2 }}>
+            <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+              <Typography variant="h6" component="h2">
+                Assignments
               </Typography>
-              <Select
-                value={rowsPerPage}
-                onChange={handleChangeRowsPerPage}
+            </Box>
+
+            <Box sx={{ display: "flex", alignItems: "center", mt: 2, flexWrap: "wrap", gap: 1 }}>
+              {tempAssignMembers.length > 0 ? (
+                tempAssignMembers.map((memberId) => {
+                  const member = members.find((m) => m._id === memberId);
+                  return (
+                    <Chip
+                      key={memberId}
+                      label={member?.name || "Unknown Member"}
+                      onDelete={() => setMemberToRemove(member)}
+                      sx={{ mr: 1, bgcolor: "#F1F5F9" }}
+                    />
+                  );
+                })
+              ) : (
+                <Typography variant="body2" color="textSecondary">
+                  No members assigned
+                </Typography>
+              )}
+
+              <Button
+                variant="contained"
                 size="small"
+                startIcon={<Add />}
+                onClick={() => setOpenAssignMembers(true)}
+                disabled={!currentList}
                 sx={{
-                  minWidth: 60,
-                  "& .MuiOutlinedInput-notchedOutline": {
-                    borderColor: "#CED1D5",
+                  bgcolor: "#0F172A",
+                  color: "white",
+                  fontWeight: "medium",
+                  boxShadow: "0 4px 6px rgba(15, 23, 42, 0.1)",
+                  transition: "all 0.2s ease",
+                  "&:hover": {
+                    bgcolor: "#1E293B",
+                    transform: "translateY(-2px)",
+                    boxShadow: "0 6px 8px rgba(15, 23, 42, 0.2)",
                   },
+                  ml: 1
                 }}
               >
-                <MenuItem value={5}>5</MenuItem>
-                <MenuItem value={10}>10</MenuItem>
-                <MenuItem value={25}>25</MenuItem>
-              </Select>
+                Assign
+              </Button>
             </Box>
-
-            <Box sx={{ display: "flex", alignItems: "center" }}>
-              <Typography variant="body2">
-                {page * rowsPerPage + 1}-{Math.min((page + 1) * rowsPerPage, filteredContacts.length)} of{" "}
-                {filteredContacts.length}
-              </Typography>
-              <IconButton disabled={page === 0} onClick={(e) => handleChangePage(e, page - 1)}>
-                <Typography variant="h5">&lt;</Typography>
-              </IconButton>
-              <IconButton
-                disabled={page >= Math.ceil(filteredContacts.length / rowsPerPage) - 1}
-                onClick={(e) => handleChangePage(e, page + 1)}
-              >
-                <Typography variant="h5">&gt;</Typography>
-              </IconButton>
-            </Box>
-          </Box>
-        </Paper>
-
-        {/* Assignments */}
-        <Paper elevation={1} sx={{ p: 3 }}>
-          <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-            <Typography variant="h6" component="h2">
-              Assignments
-            </Typography>
-          </Box>
-
-          <Box sx={{ display: "flex", alignItems: "center", mt: 2 }}>
-            {tempAssignMembers.length > 0 ? (
-              tempAssignMembers.map((memberId) => {
-                const member = members.find((m) => m._id === memberId);
-                return (
-                  <Chip
-                    key={memberId}
-                    label={member?.name || "Unknown Member"}
-                    onDelete={() => setMemberToRemove(member)}
-                    sx={{ mr: 1, bgcolor: "#F1F5F9" }}
-                  />
-                );
-              })
-            ) : (
-              <Typography variant="body2" color="textSecondary">
-                No members assigned
-              </Typography>
-            )}
-
-            <Button
-              variant="contained"
-              size="small"
-              startIcon={<Add />}
-              onClick={() => setOpenAssignMembers(true)}
-              sx={{
-                bgcolor: "#0F172A",
-                color: "white",
-                fontWeight: "medium",
-                boxShadow: "0 4px 6px rgba(15, 23, 42, 0.1)",
-                transition: "all 0.2s ease",
-                "&:hover": {
-                  bgcolor: "#1E293B",
-                  transform: "translateY(-2px)",
-                  boxShadow: "0 6px 8px rgba(15, 23, 42, 0.2)",
-                },
-                ml: 1
-              }}
-            >
-              Assign
-            </Button>
-          </Box>
+          </Paper>
         </Paper>
 
         {/* Add Contact Dialog */}
@@ -1434,7 +1365,7 @@ const exportContactsToCSV = () => {
                 onChange={handleListChange}
               >
                 {lists.map((list) => (
-                  <MenuItem key={list._id} value={list._id}>
+                  <MenuItem key={list._id} value={list.name}>
                     {list.name}
                   </MenuItem>
                 ))}
@@ -1458,6 +1389,7 @@ const exportContactsToCSV = () => {
             <Button
               variant="contained"
               onClick={handleUpload}
+              disabled={!selectedFile}
               sx={{
                 bgcolor: "#0F172A",
                 color: "white",
@@ -1507,6 +1439,7 @@ const exportContactsToCSV = () => {
             <Button
               onClick={handleCreateNewList}
               variant="contained"
+              disabled={!newListName.trim()}
               sx={{
                 bgcolor: "#0F172A",
                 color: "white",
@@ -1556,6 +1489,7 @@ const exportContactsToCSV = () => {
             <Button
               onClick={handleEditList}
               variant="contained"
+              disabled={!editListName.trim()}
               sx={{
                 bgcolor: "#0F172A",
                 color: "white",
@@ -1649,7 +1583,7 @@ const exportContactsToCSV = () => {
                     <Chip
                       key={memberId}
                       label={member?.name || memberId}
-                      onDelete={() => setMemberToRemove(member)}
+                      onDelete={() => handleMemberToggle(memberId)}
                       sx={{ bgcolor: "#F1F5F9" }}
                     />
                   );
@@ -1747,22 +1681,21 @@ const exportContactsToCSV = () => {
             </Button>
           </DialogActions>
         </Dialog>
+
+        {/* Snackbar for notifications */}
+        <Snackbar
+          open={snackbar.open}
+          autoHideDuration={6000}
+          onClose={handleCloseSnackbar}
+          anchorOrigin={{ vertical: "top", horizontal: "right" }}
+        >
+          <Alert onClose={handleCloseSnackbar} severity={snackbar.severity} sx={{ width: "100%" }}>
+            {snackbar.message}
+          </Alert>
+        </Snackbar>
       </Box>
-
-      {/* Snackbar for notifications */}
-      <Snackbar
-        open={snackbar.open}
-        autoHideDuration={6000}
-        onClose={handleCloseSnackbar}
-        anchorOrigin={{ vertical: "top", horizontal: "right" }}
-      >
-        <Alert onClose={handleCloseSnackbar} severity={snackbar.severity} sx={{ width: "100%" }}>
-          {snackbar.message}
-        </Alert>
-      </Snackbar>
     </ThemeProvider>
-  )
-}
+  );
+};
 
-export default CRMComponent
-
+export default CRMComponent;

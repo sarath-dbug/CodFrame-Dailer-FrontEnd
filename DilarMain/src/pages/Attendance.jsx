@@ -111,13 +111,13 @@ const Attendance = () => {
 
   const filteredMembers = members.map((member) => {
     if (filter === "All") return member;
-    
+
     const filteredAttendance = Object.fromEntries(
-      Object.entries(member.attendance).filter(([_, status]) => 
+      Object.entries(member.attendance).filter(([_, status]) =>
         filter === "Present" ? status === "present" : status === "absent"
       )
     );
-    
+
     return {
       ...member,
       attendance: filteredAttendance,
@@ -126,16 +126,20 @@ const Attendance = () => {
 
   return (
     <Box sx={{ maxWidth: "100%", overflow: "hidden" }}>
+      {/* main bar text */}
       <Paper
         elevation={0}
         sx={{ p: 3, backgroundColor: colors.paleBlue, borderRadius: 0 }}
       >
         <Typography
-          variant="h5"
+          variant="h4"
           component="h1"
-          sx={{ fontWeight: "bold", color: colors.darkBlue, mb: 3 }}
+          sx={{ fontWeight: "bold", color: colors.darkBlue, mb: 1 }}
         >
-          Productivity & Attendance
+          Attendance
+        </Typography>
+        <Typography variant="body1" color="text.secondary">
+          Track team productivity and monitor attendance efficiently
         </Typography>
       </Paper>
 

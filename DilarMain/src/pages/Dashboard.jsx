@@ -205,7 +205,7 @@ const Dashboard = () => {
 
   // Navigate to calls component
   const navigateToCalls = () => {
-    navigate('/calls');
+    navigate('/app/reports/reports');
   };
 
   // Navigate to agents component

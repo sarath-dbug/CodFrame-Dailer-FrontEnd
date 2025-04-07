@@ -37,6 +37,9 @@ import axios from "axios";
 import { selectCurrentToken, selectCurrentUser, clearCredentials } from '../features/authSlice';
 import { setCurrentTeam, clearCurrentTeam } from '../features/teamSlice';
 
+import logoFull from '../assets/DL-logo.png';
+import logoIcon from '../assets/DL-Icon.png';
+
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
 
 // Styled components with enhanced color theme
@@ -82,7 +85,7 @@ const StyledNavLink = styled(NavLink)({
   }
 });
 
-function Sidebar({ toggleSidebar, isSidebarOpen }) {
+function Sidebar({ isSidebarOpen }) {
   const [teamDropdownOpen, setTeamDropdownOpen] = useState(false);
   const [reportsDropdownOpen, setReportsDropdownOpen] = useState(false);
   const [teams, setTeams] = useState([]);
@@ -138,45 +141,43 @@ function Sidebar({ toggleSidebar, isSidebarOpen }) {
   return (
     <SidebarContainer sx={{ width: isSidebarOpen ? 260 : 80 }}>
       <Box sx={{ flexGrow: 1 }}>
-        {/* Sidebar Header */}
+        {/* Sidebar Header with Logo */}
         <Box sx={{
           p: 2,
           display: 'flex',
-          justifyContent: 'space-between',
+          justifyContent: isSidebarOpen ? 'flex-start' : 'center', 
           alignItems: 'center',
-          borderBottom: '1px solid rgba(206, 209, 213, 0.1)'
+          borderBottom: '1px solid rgba(206, 209, 213, 0.1)',
+          height: 80,
+          pl: isSidebarOpen ? 3 : 0, 
         }}>
           {isSidebarOpen ? (
-            <Typography variant="h6" sx={{
-              color: '#3B82F6',
-              fontWeight: 600,
-              letterSpacing: 0.5
-            }}>
-              Admin Portal
-            </Typography>
+            <Box
+              component="img"
+              src={logoFull}
+              alt="Admin Portal Logo"
+              sx={{
+                height: 30,
+                width: 'auto',
+                objectFit: 'contain',
+                ml: 1 
+              }}
+            />
           ) : (
-            <Typography variant="subtitle2" sx={{
-              color: '#3B82F6',
-              fontWeight: 600
-            }}>
-              AP
-            </Typography>
+            <Box
+              component="img"
+              src={logoIcon}
+              alt="AP"
+              sx={{
+                height: 30,
+                width: 30, 
+                objectFit: 'contain'
+              }}
+            />
           )}
-          <IconButton
-            onClick={toggleSidebar}
-            sx={{
-              p: 1,
-              '&:hover': {
-                backgroundColor: 'rgba(206, 209, 213, 0.2)',
-              },
-              color: '#CED1D5'
-            }}
-          >
-            <MenuIcon />
-          </IconButton>
         </Box>
 
-        {/* Team Selection */}
+        {/* Rest of your sidebar content remains the same */}
         <List sx={{ px: 1.5, mt: 1.5 }}>
           <ListItem disablePadding>
             <ListItemButton
@@ -261,7 +262,7 @@ function Sidebar({ toggleSidebar, isSidebarOpen }) {
             </Paper>
           </Collapse>
 
-          {/* Menu Items with improved icons and spacing */}
+          {/* Menu Items */}
           <ListItem disablePadding sx={{ mb: 0.5 }}>
             <StyledNavLink to="/app/dashboard">
               <ListItemButton sx={{ py: 1.5 }}>
@@ -377,7 +378,7 @@ function Sidebar({ toggleSidebar, isSidebarOpen }) {
               <Collapse in={isSidebarOpen && reportsDropdownOpen}>
                 <List sx={{ pl: 4 }}>
                   <ListItem disablePadding>
-                    <StyledNavLink to="/app/reports/master">
+                    <StyledNavLink to="/app/reports/reports">
                       <ListItemButton sx={{ py: 1 }}>
                         <ListItemIcon sx={{
                           minWidth: 40,

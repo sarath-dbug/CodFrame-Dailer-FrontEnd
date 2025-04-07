@@ -191,20 +191,25 @@ const TeamManagement = () => {
   return (
     <Box sx={{ p: 3 }}>
       {/* Header Section */}
-      <Box sx={{ 
-        display: 'flex', 
-        justifyContent: 'space-between', 
+      <Box sx={{
+        display: 'flex',
+        justifyContent: 'space-between',
         alignItems: 'center',
         mb: 3,
         flexWrap: 'wrap',
         gap: 2
       }}>
-        <Box sx={{ display: 'flex', alignItems: 'center' }}>
-          <PeopleIcon color="primary" sx={{ mr: 1, fontSize: 32 }} />
-          <Typography variant="h5" component="h1" fontWeight="bold">
+
+        {/* main bar text */}
+        <Box sx={{ mb: 4 }}>
+          <Typography variant="h4" component="h1" gutterBottom fontWeight="bold">
             Team Management
           </Typography>
+          <Typography variant="body1" color="text.secondary">
+            Organize your team and manage roles and responsibilities effectively
+          </Typography>
         </Box>
+
         <Button
           variant="contained"
           startIcon={<AddIcon />}
@@ -220,7 +225,7 @@ const TeamManagement = () => {
       <Grid container spacing={3}>
         {teams.map((team) => (
           <Grid item xs={12} sm={6} md={4} key={team._id}>
-            <Card elevation={3} sx={{ 
+            <Card elevation={3} sx={{
               height: '100%',
               display: 'flex',
               flexDirection: 'column',
@@ -243,27 +248,27 @@ const TeamManagement = () => {
                 }
                 subheader={`Created: ${new Date(team.createdAt).toLocaleDateString()}`}
               />
-              
+
               <CardContent sx={{ flexGrow: 1 }}>
                 <Stack direction="row" spacing={1} sx={{ mb: 2, flexWrap: 'wrap', gap: 1 }}>
-                  <Chip 
+                  <Chip
                     icon={<PersonIcon fontSize="small" />}
                     label={`${team.assignedTo.length} ${team.assignedTo.length === 1 ? 'Agent' : 'Agents'}`}
                     variant="outlined"
                     color="primary"
                   />
-                  <Chip 
+                  <Chip
                     icon={<DateIcon fontSize="small" />}
                     label={new Date(team.createdAt).toLocaleDateString()}
                     variant="outlined"
                   />
                 </Stack>
               </CardContent>
-              
+
               <Divider />
-              
+
               <CardActions sx={{ justifyContent: 'flex-end', p: 2 }}>
-                <Button 
+                <Button
                   startIcon={<EditIcon />}
                   onClick={() => handleOpenEditDialog(team)}
                   color="primary"
@@ -271,7 +276,7 @@ const TeamManagement = () => {
                 >
                   {!isMobile && "Edit"}
                 </Button>
-                <Button 
+                <Button
                   startIcon={<DeleteIcon />}
                   onClick={() => handleOpenDeleteDialog(team._id)}
                   color="error"
@@ -287,9 +292,9 @@ const TeamManagement = () => {
 
       {/* Empty State */}
       {teams.length === 0 && (
-        <Paper 
-          sx={{ 
-            p: 4, 
+        <Paper
+          sx={{
+            p: 4,
             textAlign: 'center',
             display: 'flex',
             flexDirection: 'column',
@@ -317,10 +322,10 @@ const TeamManagement = () => {
       )}
 
       {/* Add Team Dialog */}
-      <Dialog 
-        open={openAddDialog} 
-        onClose={handleCloseAddDialog} 
-        fullWidth 
+      <Dialog
+        open={openAddDialog}
+        onClose={handleCloseAddDialog}
+        fullWidth
         maxWidth="sm"
       >
         <DialogTitle sx={{ display: 'flex', alignItems: 'center' }}>
@@ -354,9 +359,9 @@ const TeamManagement = () => {
           <Button onClick={handleCloseAddDialog} variant="outlined">
             Cancel
           </Button>
-          <Button 
-            onClick={handleAddTeam} 
-            variant="contained" 
+          <Button
+            onClick={handleAddTeam}
+            variant="contained"
             disabled={!newTeam.name}
             sx={{ ml: 2 }}
           >
@@ -366,10 +371,10 @@ const TeamManagement = () => {
       </Dialog>
 
       {/* Edit Team Dialog */}
-      <Dialog 
-        open={openEditDialog} 
-        onClose={handleCloseEditDialog} 
-        fullWidth 
+      <Dialog
+        open={openEditDialog}
+        onClose={handleCloseEditDialog}
+        fullWidth
         maxWidth="sm"
       >
         <DialogTitle sx={{ display: 'flex', alignItems: 'center' }}>
@@ -403,9 +408,9 @@ const TeamManagement = () => {
           <Button onClick={handleCloseEditDialog} variant="outlined">
             Cancel
           </Button>
-          <Button 
-            onClick={handleUpdateTeam} 
-            variant="contained" 
+          <Button
+            onClick={handleUpdateTeam}
+            variant="contained"
             disabled={!editTeam.name}
             sx={{ ml: 2 }}
           >
@@ -415,10 +420,10 @@ const TeamManagement = () => {
       </Dialog>
 
       {/* Delete Confirmation Dialog */}
-      <Dialog 
-        open={openDeleteDialog} 
-        onClose={handleCloseDeleteDialog} 
-        fullWidth 
+      <Dialog
+        open={openDeleteDialog}
+        onClose={handleCloseDeleteDialog}
+        fullWidth
         maxWidth="sm"
       >
         <DialogTitle sx={{ display: 'flex', alignItems: 'center' }}>
@@ -448,9 +453,9 @@ const TeamManagement = () => {
           <Button onClick={handleCloseDeleteDialog} variant="outlined">
             Cancel
           </Button>
-          <Button 
-            onClick={handleDeleteTeam} 
-            variant="contained" 
+          <Button
+            onClick={handleDeleteTeam}
+            variant="contained"
             color="error"
             sx={{ ml: 2 }}
           >

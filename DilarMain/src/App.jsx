@@ -15,6 +15,7 @@ import Members from "./pages/Members";
 import ContactManagement from "./pages/ContactManagement";
 import Attendance from "./pages/Attendance";
 import Reports from "./pages/Reports";
+import Performance from "./pages/Performance";
 
 
 function App() {
@@ -33,6 +34,7 @@ function App() {
             <Route path="/app/members" element={<Members />} />
             <Route path="/app/reports/attendance" element={<Attendance />} />
             <Route path="/app/reports/reports" element={<Reports />} />
+            <Route path="/app/reports/performance" element={<Performance />} />
             <Route path="/app/settings" element={<Settings />} />
             <Route path="/app/settings/edit" element={<EditContactModal />} />
             <Route path="/app/settings/upload" element={<FileUploadModal />} />

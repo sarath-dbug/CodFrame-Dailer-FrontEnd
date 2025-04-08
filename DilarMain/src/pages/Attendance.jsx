@@ -235,7 +235,7 @@ const Attendance = () => {
               {filteredMembers.map((member) => (
                 <TableRow key={member.id}>
                   <TableCell sx={{ display: "flex", alignItems: "center", gap: 2 }}>
-                    <Avatar sx={{ bgcolor: "#4ade80", color: "white" }}>
+                    <Avatar sx={{ bgcolor: "#0F172A", color: "white" }}>
                       {member.avatar}
                     </Avatar>
                     {member.name}

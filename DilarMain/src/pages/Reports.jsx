@@ -482,10 +482,10 @@ const ReportsDashboard = () => {
                                 variant="contained"
                                 onClick={handleGenerate}
                                 sx={{
-                                    bgcolor: colors.success,
+                                    bgcolor: colors.primary,
                                     color: "#fff",
                                     "&:hover": {
-                                        bgcolor: "#3AAC70",
+                                        bgcolor: "#1A2542"
                                     },
                                 }}
                             >

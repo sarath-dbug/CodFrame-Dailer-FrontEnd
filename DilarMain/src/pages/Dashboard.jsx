@@ -220,7 +220,7 @@ const Dashboard = () => {
 
   // Navigate to user details component
   const navigateToUserDetails = (userId) => {
-    navigate(`/user/${userId}`);
+    navigate('/app/reports/performance');
   };
 
   return (

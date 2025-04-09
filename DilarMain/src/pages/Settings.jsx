@@ -1,229 +1,160 @@
-// import React from 'react';
-// import { Typography, Paper, Box, CircularProgress } from '@mui/material';
-
-// function SettingsComingSoon() {
-//   return (
-//     <Paper elevation={3} className="p-6 max-w-md mx-auto flex flex-col items-center justify-center h-96">
-//       <Box display="flex" flexDirection="column" alignItems="center">
-//         <CircularProgress color="primary" className="mb-7" />
-//         <Typography variant="h5" gutterBottom className="text-center">
-//           Settings Coming Soon
-//         </Typography>
-//         <Typography variant="body2" color="textSecondary" className="text-center">
-//           We're working hard to bring you a comprehensive settings experience.
-//           Stay tuned for updates!
-//         </Typography>
-//       </Box>
-//     </Paper>
-//   );
-// }
-
-// export default SettingsComingSoon;
-
-import React, { useState } from "react";
+import React from 'react';
 import {
-  SettingsBackupRestore,
-  Notifications,
-  Security,
-  Backup,
-} from "@mui/icons-material";
+  Box,
+  Typography,
+  List,
+  ListItem,
+  ListItemIcon,
+  ListItemText,
+  ListItemButton,
+  Paper,
+  Divider
+} from '@mui/material';
+import {
+  Person,
+  Lock,
+  Apps,
+  SwapHoriz,
+  ViewList,
+  Message,
+  CloudQueue,
+  ChevronRight
+} from '@mui/icons-material';
+import { createTheme, ThemeProvider } from '@mui/material/styles';
+import { useNavigate } from 'react-router-dom';
+import logoIcon from '../assets/DL-Icon.png';
 
-const Settings = () => {
-  const [darkMode, setDarkMode] = useState(false);
-  const [language, setLanguage] = useState("en");
-  const [emailNotifications, setEmailNotifications] = useState(true);
-  const [smsNotifications, setSmsNotifications] = useState(false);
-  const [passwordData, setPasswordData] = useState({
-    currentPassword: "",
-    newPassword: "",
-    confirmPassword: "",
-  });
+const colors = {
+  darkBlue: "#0F172A",
+  lightGray: "#CED1D5",
+  paleBlue: "#F1F5F9",
+};
 
-  const handlePasswordChange = (e) => {
-    setPasswordData({
-      ...passwordData,
-      [e.target.name]: e.target.value,
-    });
-  };
+// Custom theme with the provided colors
+const theme = createTheme({
+  palette: {
+    primary: {
+      main: '#0F172A',
+    },
+    secondary: {
+      main: '#CED1D5',
+    },
+    background: {
+      default: '#F1F5F9',
+      paper: '#FFFFFF',
+    },
+    text: {
+      primary: '#0F172A',
+      secondary: '#64748B',
+    },
+  },
+  typography: {
+    fontFamily: '"Roboto", "Helvetica", "Arial", sans-serif',
+    h5: {
+      fontWeight: 600,
+    },
+  },
+  components: {
+    MuiListItemButton: {
+      styleOverrides: {
+        root: {
+          '&:hover': {
+            backgroundColor: '#F1F5F9',
+          },
+        },
+      },
+    },
+  },
+});
 
-  const handlePasswordSubmit = (e) => {
-    e.preventDefault();
-    if (passwordData.newPassword === passwordData.confirmPassword) {
-      console.log("Password change request:", passwordData);
-      setPasswordData({
-        currentPassword: "",
-        newPassword: "",
-        confirmPassword: "",
-      });
-    }
-  };
+// Settings menu items with routes
+const menuItems = [
+  { text: 'General', icon: <Person />, path: '/settings/general' },
+  { text: 'Change Password', icon: <Lock />, path: '/app/settings/change-password' },
+  { text: 'Default Dialer', icon: <Apps />, path: '/settings/default-dialer' },
+  { text: 'Custom Status / Disposition', icon: <SwapHoriz />, path: '/settings/custom-status' },
+  { text: 'Custom Fields', icon: <ViewList />, path: '/settings/custom-fields' },
+  { text: 'Message Templates', icon: <Message />, path: '/settings/message-templates' },
+  { text: 'Storage', icon: <CloudQueue />, path: '/settings/storage' },
+];
 
-  const handleExport = (type) => {
-    console.log(`Exporting ${type} data`);
+function Settings() {
+  const navigate = useNavigate();
+
+  const handleMenuItemClick = (path) => {
+    navigate(path);
   };
 
   return (
-    <div className="p-6 mx-auto">
-      <div className="mb-8">
-        <h1 className="text-3xl font-bold text-gray-800 flex items-center">
-          <SettingsBackupRestore className="mr-2 text-2xl" />
-          Settings
-        </h1>
-      </div>
+    <ThemeProvider theme={theme}>
+      <Box sx={{ maxWidth: "100%", overflow: "hidden" }}>
+        {/* main bar text */}
+        <Paper
+          elevation={0}
+          sx={{ p: 3, backgroundColor: colors.paleBlue, borderRadius: 0 }}
+        >
+          <Typography
+            variant="h4"
+            component="h1"
+            sx={{ fontWeight: "bold", color: colors.darkBlue, mb: 1 }}
+          >
+            Settings
+          </Typography>
+          <Typography variant="body1" color="text.secondary">
+            Customize your preferences and manage application configurations
+          </Typography>
+        </Paper>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        {/* App Preferences */}
-        <div className="bg-white p-6 rounded-lg shadow-lg">
-          <h2 className="text-xl font-semibold mb-4 text-gray-700">
-            App Preferences
-          </h2>
+        <Paper elevation={0} sx={{ borderRadius: 2, overflow: 'hidden' }}>
+          <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', py: 4 }}>
+            <Box
+              component="img"
+              src={logoIcon}
+              alt="App Logo"
+              sx={{
+                height: 50,
+                width: 50,
+                objectFit: 'contain'
+              }}
+            />
+            <Typography variant="subtitle1" color="text.primary">
+              Dialer Enterprise v1.0
+            </Typography>
+          </Box>
 
-          {/* <div className="mb-4">
-            <label className="flex items-center space-x-3">
-              <input
-                type="checkbox"
-                checked={darkMode}
-                onChange={(e) => setDarkMode(e.target.checked)}
-                className="form-checkbox h-5 w-5 text-blue-600 rounded focus:ring-blue-500"
-              />
-              <span className="text-gray-700">Dark Mode</span>
-            </label>
-          </div>
-          
-          <div className="mt-4">
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Language Preference
-            </label>
-            <select
-              value={language}
-              onChange={(e) => setLanguage(e.target.value)}
-              className="block w-full p-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500"
-            >
-              <option value="en">English</option>
-              <option value="hi">Hindi</option>
-              <option value="fr">Français</option>
-              <option value="de">Deutsch</option>
-            </select>
-          </div> */}
-        </div>
+          <Divider />
 
-        {/* Notification Settings */}
-        <div className="bg-white p-6 rounded-lg shadow-lg">
-          <h2 className="text-xl font-semibold mb-4 text-gray-700 flex items-center">
-            <Notifications className="mr-2 text-lg" />
-            Notification Settings
-          </h2>
-
-          <div className="space-y-3">
-            <label className="flex items-center space-x-3">
-              <input
-                type="checkbox"
-                checked={emailNotifications}
-                onChange={(e) => setEmailNotifications(e.target.checked)}
-                className="form-checkbox h-5 w-5 text-blue-600 rounded focus:ring-blue-500 cursor-pointer"
-              />
-              <span className="text-gray-700 cursor-pointer">Email Notifications</span>
-            </label>
-
-            <label className="flex items-center space-x-3 cursor-pointer">
-              <input
-                type="checkbox"
-                checked={smsNotifications}
-                onChange={(e) => setSmsNotifications(e.target.checked)}
-                className="form-checkbox h-5 w-5 text-blue-600 rounded focus:ring-blue-500"
-              />
-              <span className="text-gray-700 cursor-pointer">SMS Notifications</span>
-            </label>
-          </div>
-        </div>
-
-        {/* Admin Password Change */}
-        <div className="bg-white p-6 rounded-lg shadow-lg">
-          <h2 className="text-xl font-semibold mb-4 text-gray-700 flex items-center">
-            <Security className="mr-2 text-lg" />
-            Admin Security
-          </h2>
-
-          <form onSubmit={handlePasswordSubmit} className="space-y-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Current Password
-              </label>
-              <input
-                type="password"
-                name="currentPassword"
-                placeholder="Please enter the Current Password"
-                value={passwordData.currentPassword}
-                onChange={handlePasswordChange}
-                className="w-full p-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
-              />
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                New Password
-              </label>
-              <input
-                type="password"
-                name="newPassword"
-                placeholder="Enter the new password"
-                value={passwordData.newPassword}
-                onChange={handlePasswordChange}
-                className="w-full p-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
-              />
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Confirm Password
-              </label>
-              <input
-                type="password"
-                name="confirmPassword"
-                placeholder="Enter the Confirm Password"
-                value={passwordData.confirmPassword}
-                onChange={handlePasswordChange}
-                className="w-full p-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
-              />
-            </div>
-
-            <button
-              type="submit"
-              className=" cursor-pointer bg-blue-600 text-white py-2 px-4 rounded-md hover:bg-blue-700 transition-colors"
-            >
-              Update Password
-            </button>
-          </form>
-        </div>
-
-        {/* Export Data */}
-        <div className="bg-white p-6 rounded-lg shadow-lg">
-          <h2 className="text-xl font-semibold mb-4 text-gray-700 flex items-center">
-            <Backup className="mr-2 text-lg" />
-            Data Management
-          </h2>
-
-          <div className="space-y-3">
-            <button
-              onClick={() => handleExport("contacts")}
-              className="w-full flex items-center justify-center space-x-2 py-2 px-4 border border-gray-300 rounded-md hover:bg-gray-50 transition-colors text-gray-700"
-            >
-              <Backup className="w-5 h-5" />
-              <span>Export Contacts (CSV)</span>
-            </button>
-
-            <button
-              onClick={() => handleExport("call-logs")}
-              className="w-full flex items-center justify-center space-x-2 py-2 px-4 border border-gray-300 rounded-md hover:bg-gray-50 transition-colors text-gray-700"
-            >
-              <Backup className="w-5 h-5" />
-              <span>Export Call Logs (JSON)</span>
-            </button>
-          </div>
-        </div>
-      </div>
-    </div>
+          <List sx={{ py: 0 }}>
+            {menuItems.map((item, index) => (
+              <React.Fragment key={item.path}>
+                <ListItem disablePadding>
+                  <ListItemButton 
+                    sx={{ py: 2 }}
+                    onClick={() => handleMenuItemClick(item.path)}
+                  >
+                    <ListItemIcon sx={{ minWidth: 40, color: 'text.primary' }}>
+                      {item.icon}
+                    </ListItemIcon>
+                    <ListItemText
+                      primary={item.text}
+                      primaryTypographyProps={{
+                        fontSize: '0.95rem',
+                        fontWeight: 500
+                      }}
+                    />
+                    <ChevronRight color="action" />
+                  </ListItemButton>
+                </ListItem>
+                {index < menuItems.length - 1 && (
+                  <Divider variant="fullWidth" component="li" sx={{ margin: 0 }} />
+                )}
+              </React.Fragment>
+            ))}
+          </List>
+        </Paper>
+      </Box>
+    </ThemeProvider>
   );
-};
+}
 
 export default Settings;

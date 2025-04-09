@@ -12,12 +12,14 @@ const authSlice = createSlice({
     initialState,
     reducers: {
         setCredentials: (state, action) => {
-            state.user = action.payload.user;
-            state.token = action.payload.token;
+            const { user, token } = action.payload;
+            state.user = { ...state.user, ...user };
+            state.token = token || state.token;
             if (typeof window !== 'undefined') {
+                const existingAuth = JSON.parse(sessionStorage.getItem('auth')) || {};
                 sessionStorage.setItem('auth', JSON.stringify({
-                    user: action.payload.user,
-                    token: action.payload.token,
+                    user: { ...existingAuth.user, ...user },
+                    token: token || existingAuth.token,
                 }));
             }
         },

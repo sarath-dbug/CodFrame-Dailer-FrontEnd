@@ -90,6 +90,7 @@ function Sidebar({ isSidebarOpen }) {
   const [reportsDropdownOpen, setReportsDropdownOpen] = useState(false);
   const [teams, setTeams] = useState([]);
   const currentTeam = useSelector(state => state.team.currentTeam);
+  const refetchFlag = useSelector(state => state.team.refetchFlag);
   const [selectedTeam, setSelectedTeam] = useState(currentTeam);
   const token = useSelector(selectCurrentToken);
   const user = useSelector(selectCurrentUser);
@@ -129,7 +130,7 @@ function Sidebar({ isSidebarOpen }) {
 
   useEffect(() => {
     fetchTeams();
-  }, [user, token, currentTeam]);
+  }, [user, token, currentTeam, refetchFlag]);
 
   const handleLogout = () => {
     dispatch(clearCredentials());

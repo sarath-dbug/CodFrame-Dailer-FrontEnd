@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react";
-import { useSelector } from 'react-redux';
+import { useDispatch, useSelector } from 'react-redux';
 import { selectCurrentToken, selectCurrentUser } from '../features/authSlice';
+import { triggerRefetch } from '../features/teamSlice';
 import axios from "axios";
 import {
   Box,
@@ -49,6 +50,7 @@ const TeamManagement = () => {
 
   const token = useSelector(selectCurrentToken);
   const user = useSelector(selectCurrentUser);
+  const dispatch = useDispatch()
 
   const fetchTeams = async () => {
     try {
@@ -106,6 +108,7 @@ const TeamManagement = () => {
           handleCloseAddDialog();
           fetchTeams();
         }
+        dispatch(triggerRefetch());
       } catch (error) {
         console.error("Error creating team:", error.response?.data?.msg || error.message);
       }
@@ -148,6 +151,7 @@ const TeamManagement = () => {
           handleCloseEditDialog();
           fetchTeams();
         }
+        dispatch(triggerRefetch());
       } catch (error) {
         console.error("Error updating team:", error.response?.data?.msg || error.message);
       }
@@ -180,6 +184,7 @@ const TeamManagement = () => {
         if (response.status === 200) {
           fetchTeams();
         }
+        dispatch(triggerRefetch());
       } catch (error) {
         console.error("Error deleting team:", error.response?.data?.msg || error.message);
       } finally {

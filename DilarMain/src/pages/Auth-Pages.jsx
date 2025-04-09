@@ -92,6 +92,25 @@ const theme = createTheme({
   },
 })
 
+// Validation functions
+const validateEmail = (email) => {
+  const re = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  return re.test(String(email).toLowerCase());
+};
+
+const validatePassword = (password) => {
+  // At least 8 characters, 1 uppercase, 1 lowercase, 1 number
+  const re = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)[a-zA-Z\d]{8,}$/;
+  return re.test(password);
+};
+
+const validatePhone = (phone) => {
+  // Pattern that enforces exactly 10 digits with optional formatting
+  const re = /^(?:\+?(\d{1,3}))?[-. (]*(\d{3})[-. )]*(\d{3})[-. ]*(\d{4})$/;
+  const digitsOnly = phone.replace(/\D/g, '');
+  return digitsOnly.length === 10; // Change to 9 if needed
+};
+
 export default function AuthPages() {
   const [isLogin, setIsLogin] = useState(true);
   const [showPassword, setShowPassword] = useState(false);
@@ -106,39 +125,133 @@ export default function AuthPages() {
     email: '',
     password: '',
   });
+  const [errors, setErrors] = useState({
+    firstName: '',
+    lastName: '',
+    companyName: '',
+    contactNumber: '',
+    email: '',
+    password: '',
+  });
 
   const dispatch = useDispatch();
   const nav = useNavigate();
-
 
   const handleToggleView = () => {
     setIsLogin(!isLogin);
     setError(null);
     setSuccess(null);
-    // Clear form when switching between login/signup
+    setErrors({
+      firstName: '',
+      lastName: '',
+      companyName: '',
+      contactNumber: '',
+      email: '',
+      password: '',
+    });
     setFormData({
-        firstName: '',
-        lastName: '',
-        companyName: '',
-        contactNumber: '',
-        email: '',
-        password: '',
-      });
+      firstName: '',
+      lastName: '',
+      companyName: '',
+      contactNumber: '',
+      email: '',
+      password: '',
+    });
   }
 
   const handleTogglePassword = () => {
     setShowPassword(!showPassword)
   }
 
+  const validateField = (name, value) => {
+    let errorMsg = '';
+    
+    switch (name) {
+      case 'email':
+        if (!value) {
+          errorMsg = 'Email is required';
+        } else if (!validateEmail(value)) {
+          errorMsg = 'Please enter a valid email address';
+        }
+        break;
+      case 'password':
+        if (!value) {
+          errorMsg = 'Password is required';
+        } else if (!isLogin && !validatePassword(value)) {
+          errorMsg = 'Password must be at least 8 characters with 1 uppercase, 1 lowercase, and 1 number';
+        }
+        break;
+      case 'firstName':
+      case 'lastName':
+        if (!value && !isLogin) {
+          errorMsg = 'This field is required';
+        } else if (value.length > 50) {
+          errorMsg = 'Must be 50 characters or less';
+        }
+        break;
+      case 'companyName':
+        if (!value && !isLogin) {
+          errorMsg = 'Company name is required';
+        }
+        break;
+      case 'contactNumber':
+        if (!value && !isLogin) {
+          errorMsg = 'Contact number is required';
+        } else if (!validatePhone(value) && !isLogin) {
+          errorMsg = 'Please enter a valid phone number';
+        }
+        break;
+      default:
+        break;
+    }
+    
+    return errorMsg;
+  };
+
   const handleInputChange = (e) => {
     const { name, value } = e.target;
+    
+    // Validate the field
+    const errorMsg = validateField(name, value);
+    
+    setErrors(prev => ({
+      ...prev,
+      [name]: errorMsg
+    }));
+    
     setFormData(prev => ({
       ...prev,
       [name]: value
     }));
   };
 
-  
+  const handleBlur = (e) => {
+    const { name, value } = e.target;
+    const errorMsg = validateField(name, value);
+    
+    setErrors(prev => ({
+      ...prev,
+      [name]: errorMsg
+    }));
+  };
+
+  const validateForm = () => {
+    const newErrors = {};
+    let isValid = true;
+    
+    // Validate all fields
+    Object.keys(formData).forEach(key => {
+      if (isLogin && !['email', 'password'].includes(key)) return;
+      
+      const errorMsg = validateField(key, formData[key]);
+      newErrors[key] = errorMsg;
+      
+      if (errorMsg) isValid = false;
+    });
+    
+    setErrors(newErrors);
+    return isValid;
+  };
 
   const handleLogin = async (email, password) => {
     try {
@@ -174,6 +287,13 @@ export default function AuthPages() {
 
   const handleSubmit = async (event) => {
     event.preventDefault();
+    
+    // Validate the form before submission
+    if (!validateForm()) {
+      setError('Please fix the errors in the form');
+      return;
+    }
+    
     setLoading(true);
     setError(null);
     setSuccess(null);
@@ -208,8 +328,6 @@ export default function AuthPages() {
       setLoading(false);
     }
   };
-
-
 
   const handleCloseAlert = () => {
     setError(null);
@@ -285,6 +403,9 @@ export default function AuthPages() {
                       autoComplete="given-name"
                       value={formData.firstName}
                       onChange={handleInputChange}
+                      onBlur={handleBlur}
+                      error={!!errors.firstName}
+                      helperText={errors.firstName}
                       InputProps={{
                         startAdornment: (
                           <InputAdornment position="start">
@@ -304,6 +425,9 @@ export default function AuthPages() {
                       autoComplete="family-name"
                       value={formData.lastName}
                       onChange={handleInputChange}
+                      onBlur={handleBlur}
+                      error={!!errors.lastName}
+                      helperText={errors.lastName}
                       InputProps={{
                         startAdornment: (
                           <InputAdornment position="start">
@@ -323,6 +447,9 @@ export default function AuthPages() {
                       autoComplete="organization"
                       value={formData.companyName}
                       onChange={handleInputChange}
+                      onBlur={handleBlur}
+                      error={!!errors.companyName}
+                      helperText={errors.companyName}
                       InputProps={{
                         startAdornment: (
                           <InputAdornment position="start">
@@ -342,6 +469,9 @@ export default function AuthPages() {
                       autoComplete="tel"
                       value={formData.contactNumber}
                       onChange={handleInputChange}
+                      onBlur={handleBlur}
+                      error={!!errors.contactNumber}
+                      helperText={errors.contactNumber}
                       InputProps={{
                         startAdornment: (
                           <InputAdornment position="start">
@@ -364,6 +494,9 @@ export default function AuthPages() {
                 margin="normal"
                 value={formData.email}
                 onChange={handleInputChange}
+                onBlur={handleBlur}
+                error={!!errors.email}
+                helperText={errors.email}
                 InputProps={{
                   startAdornment: (
                     <InputAdornment position="start">
@@ -384,6 +517,9 @@ export default function AuthPages() {
                 margin="normal"
                 value={formData.password}
                 onChange={handleInputChange}
+                onBlur={handleBlur}
+                error={!!errors.password}
+                helperText={errors.password}
                 InputProps={{
                   startAdornment: (
                     <InputAdornment position="start">
@@ -433,4 +569,3 @@ export default function AuthPages() {
     </ThemeProvider>
   );
 }
-

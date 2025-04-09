@@ -10,7 +10,6 @@ import {
   Typography,
 } from "@mui/material";
 import {
-  Notifications as BellIcon,
   AccountCircle as UserCircleIcon,
   Settings as SettingsIcon,
   Brightness4 as DarkModeIcon,
@@ -18,6 +17,9 @@ import {
   Menu as MenuIcon,
   PlayCircle as PlayIcon
 } from "@mui/icons-material";
+import { useDispatch } from "react-redux";
+import { clearCredentials } from '../features/authSlice';
+import { clearCurrentTeam } from '../features/teamSlice';
 
 function Navbar({ toggleSidebar }) {
   const [isProfileMenuOpen, setIsProfileMenuOpen] = useState(false);
@@ -25,17 +27,26 @@ function Navbar({ toggleSidebar }) {
   const navbarRef = useRef(null);
   const profileAnchorRef = useRef(null);
   const navigate = useNavigate();
+  const dispatch = useDispatch();
 
   // Close menu when clicking outside
   useEffect(() => {
     const handleClickOutside = (event) => {
-      if (navbarRef.current && !navbarRef.current.contains(event.target)) {
+      if (navbarRef.current &&
+        !navbarRef.current.contains(event.target) &&
+        !profileAnchorRef.current.contains(event.target)) {
         setIsProfileMenuOpen(false);
       }
     };
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, []);
+
+    if (isProfileMenuOpen) {
+      document.addEventListener("mousedown", handleClickOutside);
+    }
+
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, [isProfileMenuOpen]);
 
   const handleProfileMenuClose = () => {
     setIsProfileMenuOpen(false);
@@ -48,6 +59,13 @@ function Navbar({ toggleSidebar }) {
 
   const handleVideoOpen = () => {
     window.open("https://www.youtube.com/watch?v=vDMyIZ2nsS0", "_blank");
+  };
+
+  const handleLogout = () => {
+    dispatch(clearCredentials());
+    dispatch(clearCurrentTeam());
+    sessionStorage.removeItem('auth');
+    navigate('/login');
   };
 
   return (
@@ -83,7 +101,7 @@ function Navbar({ toggleSidebar }) {
           </IconButton>
 
           {/* Settings */}
-          <IconButton color="inherit">
+          <IconButton onClick={() => navigate("/app/settings")} color="inherit">
             <SettingsIcon />
           </IconButton>
 
@@ -116,13 +134,22 @@ function Navbar({ toggleSidebar }) {
                 horizontal: 'right',
               }}
             >
-              <MenuItem onClick={handleProfileMenuClose}>
+              <MenuItem onClick={() => {
+                handleProfileMenuClose();
+                navigate("/app/user-profile");
+              }}>
                 <Typography variant="body2">Profile</Typography>
               </MenuItem>
-              <MenuItem onClick={handleProfileMenuClose}>
+              <MenuItem onClick={() => {
+                handleProfileMenuClose();
+                navigate("/app/settings");
+              }}>
                 <Typography variant="body2">Settings</Typography>
               </MenuItem>
-              <MenuItem onClick={handleProfileMenuClose}>
+              <MenuItem onClick={() => {
+                handleProfileMenuClose();
+                handleLogout();
+              }}>
                 <Typography variant="body2">Logout</Typography>
               </MenuItem>
             </Menu>

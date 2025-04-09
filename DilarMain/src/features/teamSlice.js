@@ -16,9 +16,13 @@ const teamSlice = createSlice({
     clearCurrentTeam: (state) => {
       state.currentTeam = null;
       localStorage.removeItem('currentTeam');
+    },
+    triggerRefetch: (state) => {
+      // This is just a flag to trigger useEffect in Sidebar
+      state.refetchFlag = !state.refetchFlag;
     }
   }
 });
 
-export const { setCurrentTeam, clearCurrentTeam } = teamSlice.actions;
+export const { setCurrentTeam, clearCurrentTeam, triggerRefetch } = teamSlice.actions;
 export default teamSlice.reducer;

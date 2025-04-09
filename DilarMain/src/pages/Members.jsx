@@ -64,6 +64,7 @@ const theme = createTheme({
 })
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
+const MAX_MEMBERS = 5; // Maximum allowed members
 
 const MembersManagement = () => {
   const [members, setMembers] = useState([])
@@ -93,11 +94,43 @@ const MembersManagement = () => {
     message: "",
     severity: "success",
   });
+  const [validationErrors, setValidationErrors] = useState({
+    name: false,
+    email: false,
+    username: false,
+    password: false,
+    phone: false,
+    role: false,
+    teams: false,
+  });
+  const [passwordErrors, setPasswordErrors] = useState({
+    new: false,
+    confirm: false,
+  });
 
   const token = useSelector(selectCurrentToken);
   const user = useSelector(selectCurrentUser);
 
+  // Validation functions
+  const validateEmail = (email) => {
+    const re = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    return re.test(String(email).toLowerCase());
+  };
 
+  const validatePassword = (password) => {
+    return password.length >= 8;
+  };
+
+  const validatePhone = (phone) => {
+    if (!phone) return true; // Phone is optional
+    const re = /^[0-9]{10,15}$/;
+    return re.test(phone);
+  };
+
+  const validateUsername = (username) => {
+    const re = /^[a-zA-Z0-9_]{3,30}$/;
+    return re.test(username);
+  };
 
   // Fetch all members
   const fetchMembers = async () => {
@@ -113,7 +146,6 @@ const MembersManagement = () => {
       setIsLoading(false)
     }
   }
-
 
   const fetchTeams = async () => {
     try {
@@ -137,7 +169,6 @@ const MembersManagement = () => {
     fetchTeams();
   }, [])
 
-
   // Helper function to show snackbar
   const showSnackbar = (message, severity = "success") => {
     setSnackbar({ open: true, message, severity })
@@ -158,6 +189,11 @@ const MembersManagement = () => {
 
   // Handle opening the add dialog
   const handleOpenAddDialog = () => {
+    if (members.length >= MAX_MEMBERS) {
+      showSnackbar(`Maximum of ${MAX_MEMBERS} members reached`, "error");
+      return;
+    }
+
     setNewMember({
       name: "",
       role: "",
@@ -167,6 +203,15 @@ const MembersManagement = () => {
       phone: "",
       teams: [],
     })
+    setValidationErrors({
+      name: false,
+      email: false,
+      username: false,
+      password: false,
+      phone: false,
+      role: false,
+      teams: false,
+    });
     setSelectedMember(null)
     setOpenAddDialog(true)
   }
@@ -183,6 +228,10 @@ const MembersManagement = () => {
       current: "",
       new: "",
       confirm: "",
+    })
+    setPasswordErrors({
+      new: false,
+      confirm: false,
     })
     setOpenPasswordDialog(true)
   }
@@ -206,6 +255,35 @@ const MembersManagement = () => {
   // Handle input change for new member form
   const handleInputChange = (e) => {
     const { name, value } = e.target;
+    
+    // Validate based on field
+    let isValid = true;
+    switch (name) {
+      case 'email':
+        isValid = validateEmail(value);
+        break;
+      case 'password':
+        isValid = validatePassword(value);
+        break;
+      case 'phone':
+        isValid = validatePhone(value);
+        break;
+      case 'username':
+        isValid = validateUsername(value);
+        break;
+      case 'name':
+      case 'role':
+        isValid = value.trim() !== '';
+        break;
+      default:
+        break;
+    }
+
+    setValidationErrors({
+      ...validationErrors,
+      [name]: !isValid,
+    });
+
     setNewMember(prev => ({
       ...prev,
       [name]: value,
@@ -214,30 +292,66 @@ const MembersManagement = () => {
 
   // Handle input change for password change form
   const handlePasswordChange = (e) => {
-    const { name, value } = e.target
+    const { name, value } = e.target;
+    
+    // Validate password
+    const isValid = name === 'new' ? validatePassword(value) : true;
+    
+    setPasswordErrors({
+      ...passwordErrors,
+      [name]: !isValid,
+    });
+
     setPasswords({
       ...passwords,
       [name]: value,
-    })
+    });
   }
 
   // Handle multi-select change for teams and lists
   const handleMultiSelectChange = (e) => {
-    const { name, value } = e.target
+    const { name, value } = e.target;
+    
+    setValidationErrors({
+      ...validationErrors,
+      [name]: value.length === 0,
+    });
+
     setNewMember({
       ...newMember,
       [name]: value,
-    })
+    });
   }
 
   // Handle adding or editing a member
   const handleAddOrEditMember = async () => {
-    if (!newMember.name || !newMember.email || !newMember.role) {
-      showSnackbar("Please fill all required fields", "error")
-      return
+    // If this is a new member (not editing), check the limit
+    if (!selectedMember && members.length >= MAX_MEMBERS) {
+      showSnackbar(`Maximum of ${MAX_MEMBERS} members reached`, "error");
+      return;
     }
 
-    setIsLoading(true)
+    // Validate all fields
+    const errors = {
+      name: !newMember.name.trim(),
+      email: !validateEmail(newMember.email),
+      username: !validateUsername(newMember.username),
+      password: !selectedMember && !validatePassword(newMember.password),
+      phone: !validatePhone(newMember.phone),
+      role: !newMember.role,
+      teams: newMember.teams.length === 0,
+    };
+
+    setValidationErrors(errors);
+
+    // Check if any errors exist
+    const hasErrors = Object.values(errors).some(error => error);
+    if (hasErrors) {
+      showSnackbar("Please correct the highlighted fields", "error");
+      return;
+    }
+
+    setIsLoading(true);
     try {
       if (selectedMember) {
         // Update existing member
@@ -253,9 +367,9 @@ const MembersManagement = () => {
               Authorization: `Bearer ${token}`,
             },
           }
-        )
+        );
         fetchMembers();
-        showSnackbar("Member updated successfully")
+        showSnackbar("Member updated successfully");
       } else {
         // Create new member
         const memberData = {
@@ -266,7 +380,7 @@ const MembersManagement = () => {
           team: newMember.teams,
           phone: newMember.phone,
           password: newMember.password
-        }
+        };
         const response = await axios.post(
           `${API_BASE_URL}/api/member/addMember`,
           memberData,
@@ -275,52 +389,65 @@ const MembersManagement = () => {
               Authorization: `Bearer ${token}`,
             },
           }
-        )
+        );
         fetchMembers();
-        showSnackbar("Member added successfully")
+        showSnackbar("Member added successfully");
       }
-      handleCloseAddDialog()
+      handleCloseAddDialog();
     } catch (error) {
-      console.error("Error saving member:", error)
-      showSnackbar(error.response?.data?.msg || "Failed to save member", "error")
+      console.error("Error saving member:", error);
+      showSnackbar(error.response?.data?.msg || "Failed to save member", "error");
     } finally {
-      setIsLoading(false)
+      setIsLoading(false);
     }
-  }
+  };
 
   // Handle deleting a member
   const handleDeleteMember = async () => {
-    if (!selectedMember) return
+    if (!selectedMember) return;
 
-    setIsLoading(true)
+    setIsLoading(true);
     try {
       await axios.delete(`${API_BASE_URL}/api/member/deleteMember/${selectedMember.userId}`, {
         headers: {
           Authorization: `Bearer ${token}`,
         },
-      })
-      setMembers(members.filter(member => member.id !== selectedMember.id))
-      showSnackbar("Member deleted successfully")
-      handleCloseDeleteDialog()
+      });
+      setMembers(members.filter(member => member.id !== selectedMember.id));
+      showSnackbar("Member deleted successfully");
+      handleCloseDeleteDialog();
       fetchMembers();
     } catch (error) {
-      console.error("Error deleting member:", error)
-      showSnackbar(error.response?.data?.msg || "Failed to delete member", "error")
+      console.error("Error deleting member:", error);
+      showSnackbar(error.response?.data?.msg || "Failed to delete member", "error");
     } finally {
-      setIsLoading(false)
+      setIsLoading(false);
     }
-  }
+  };
 
   // Handle changing a member's password
   const handleChangePassword = async () => {
-    if (!selectedMember) return
+    if (!selectedMember) return;
 
     if (passwords.new !== passwords.confirm) {
-      showSnackbar("New passwords don't match", "error")
-      return
+      showSnackbar("New passwords don't match", "error");
+      setPasswordErrors({
+        new: true,
+        confirm: true,
+      });
+      return;
     }
 
-    setIsLoading(true)
+    if (!validatePassword(passwords.new)) {
+      showSnackbar("Password must be at least 8 characters", "error");
+      setPasswordErrors({
+        new: true,
+        confirm: true,
+      });
+      return;
+    }
+
+    setIsLoading(true);
     try {
       await axios.put(
         `${API_BASE_URL}/api/member/changePassword`,
@@ -333,20 +460,20 @@ const MembersManagement = () => {
             Authorization: `Bearer ${token}`,
           },
         }
-      )
-      showSnackbar("Password changed successfully")
-      handleClosePasswordDialog()
+      );
+      showSnackbar("Password changed successfully");
+      handleClosePasswordDialog();
     } catch (error) {
-      console.error("Error changing password:", error)
-      showSnackbar(error.response?.data?.msg || "Failed to change password", "error")
+      console.error("Error changing password:", error);
+      showSnackbar(error.response?.data?.msg || "Failed to change password", "error");
     } finally {
-      setIsLoading(false)
+      setIsLoading(false);
     }
-  }
+  };
 
   // Handle editing a member
   const handleEditMember = (member) => {
-    setSelectedMember(member)
+    setSelectedMember(member);
     setNewMember({
       name: member.name,
       role: member.role,
@@ -355,10 +482,18 @@ const MembersManagement = () => {
       password: "",
       phone: member.phone || "",
       teams: member.team || [],
-    })
-    setOpenAddDialog(true)
-  }
-
+    });
+    setValidationErrors({
+      name: false,
+      email: false,
+      username: false,
+      password: false,
+      phone: false,
+      role: false,
+      teams: false,
+    });
+    setOpenAddDialog(true);
+  };
 
   // Handle exporting a member's data
   const handleExportMembers = () => {
@@ -404,19 +539,17 @@ const MembersManagement = () => {
     }
   };
 
-
   // Get initials for avatar
   const getInitials = (name) => {
     return name
       .split(" ")
       .map((n) => n[0])
       .join("")
-      .toUpperCase()
-  }
+      .toUpperCase();
+  };
 
   // Static Roles data for dropdowns
   const roles = ['Team Manager', 'Sub Manager', 'Agent'];
-
 
   return (
     <ThemeProvider theme={theme}>
@@ -429,6 +562,14 @@ const MembersManagement = () => {
             <Box sx={{ mb: 4 }}>
               <Typography variant="h4" component="h1" gutterBottom fontWeight="bold">
                 Team Members
+                <Typography 
+                  component="span" 
+                  variant="body1" 
+                  color="text.secondary"
+                  sx={{ ml: 2 }}
+                >
+                  ({members.length}/{MAX_MEMBERS})
+                </Typography>
               </Typography>
               <Typography variant="body1" color="text.secondary">
                 Manage your team members and their permissions
@@ -476,8 +617,16 @@ const MembersManagement = () => {
                   startIcon={<AddIcon />}
                   onClick={handleOpenAddDialog}
                   sx={{ borderRadius: 2 }}
+                  disabled={members.length >= MAX_MEMBERS}
                 >
                   Add Member
+                  {members.length >= MAX_MEMBERS && (
+                    <Tooltip title={`Maximum of ${MAX_MEMBERS} members reached`}>
+                      <span style={{ marginLeft: '8px' }}>
+                        ({MAX_MEMBERS}/{MAX_MEMBERS})
+                      </span>
+                    </Tooltip>
+                  )}
                 </Button>
                 <Button
                   variant="outlined"
@@ -512,7 +661,7 @@ const MembersManagement = () => {
                   {searchQuery ? 'No matching members found' : 'No members available'}
                 </Typography>
                 <Typography variant="body1" color="textSecondary" sx={{ mb: 3 }}>
-                  {searchQuery ? 'Try a different search term' : 'Add your first team member to get started'}
+                  {searchQuery ? 'Try a different search term' : `Add your first team member (max ${MAX_MEMBERS})`}
                 </Typography>
                 <Button
                   variant="contained"
@@ -520,6 +669,7 @@ const MembersManagement = () => {
                   onClick={handleOpenAddDialog}
                   size="large"
                   sx={{ borderRadius: 2 }}
+                  disabled={members.length >= MAX_MEMBERS}
                 >
                   Add Member
                 </Button>
@@ -600,7 +750,6 @@ const MembersManagement = () => {
                             </Box>
                           )}
 
-                          {/* Added Lists display section */}
                           {member.lists?.length > 0 && (
                             <Box>
                               <Box sx={{ display: 'flex', alignItems: 'center', mb: 0.5 }}>
@@ -616,7 +765,7 @@ const MembersManagement = () => {
                                     label={list}
                                     size="small"
                                     variant="outlined"
-                                    onDelete={() => { }} // Add your delete handler here
+                                    onDelete={() => { }}
                                     deleteIcon={<Close fontSize="small" />}
                                   />
                                 ))}
@@ -692,6 +841,8 @@ const MembersManagement = () => {
                       margin="normal"
                       required
                       disabled={isLoading}
+                      error={validationErrors.name}
+                      helperText={validationErrors.name ? "Name is required" : ""}
                     />
                   </Grid>
                   <Grid item xs={12} sm={6}>
@@ -705,6 +856,8 @@ const MembersManagement = () => {
                       margin="normal"
                       required
                       disabled={!!selectedMember || isLoading}
+                      error={validationErrors.email}
+                      helperText={validationErrors.email ? "Please enter a valid email" : ""}
                     />
                   </Grid>
                   <Grid item xs={12} sm={6}>
@@ -717,6 +870,8 @@ const MembersManagement = () => {
                       margin="normal"
                       required
                       disabled={!!selectedMember || isLoading}
+                      error={validationErrors.username}
+                      helperText={validationErrors.username ? "3-30 characters, letters, numbers and underscores only" : ""}
                     />
                   </Grid>
                   {!selectedMember && (
@@ -731,11 +886,13 @@ const MembersManagement = () => {
                         margin="normal"
                         required
                         disabled={isLoading}
+                        error={validationErrors.password}
+                        helperText={validationErrors.password ? "Password must be at least 8 characters" : ""}
                       />
                     </Grid>
                   )}
                   <Grid item xs={12} sm={6}>
-                    <FormControl fullWidth margin="normal" required>
+                    <FormControl fullWidth margin="normal" required error={validationErrors.role}>
                       <InputLabel>Role</InputLabel>
                       <Select
                         name="role"
@@ -753,6 +910,11 @@ const MembersManagement = () => {
                           </MenuItem>
                         ))}
                       </Select>
+                      {validationErrors.role && (
+                        <Typography variant="caption" color="error">
+                          Role is required
+                        </Typography>
+                      )}
                     </FormControl>
                   </Grid>
                   <Grid item xs={12} sm={6}>
@@ -764,10 +926,12 @@ const MembersManagement = () => {
                       onChange={handleInputChange}
                       margin="normal"
                       disabled={isLoading}
+                      error={validationErrors.phone}
+                      helperText={validationErrors.phone ? "Please enter a valid phone number (10-15 digits)" : ""}
                     />
                   </Grid>
                   <Grid item xs={12}>
-                    <FormControl fullWidth margin="normal">
+                    <FormControl fullWidth margin="normal" required error={validationErrors.teams}>
                       <InputLabel>Teams</InputLabel>
                       <Select
                         name="teams"
@@ -794,6 +958,11 @@ const MembersManagement = () => {
                           </MenuItem>
                         ))}
                       </Select>
+                      {validationErrors.teams && (
+                        <Typography variant="caption" color="error">
+                          At least one team is required
+                        </Typography>
+                      )}
                     </FormControl>
                   </Grid>
                 </Grid>
@@ -843,6 +1012,8 @@ const MembersManagement = () => {
                   onChange={handlePasswordChange}
                   margin="normal"
                   required
+                  error={passwordErrors.new}
+                  helperText={passwordErrors.new ? "Password must be at least 8 characters" : ""}
                 />
                 <TextField
                   name="confirm"
@@ -853,6 +1024,8 @@ const MembersManagement = () => {
                   onChange={handlePasswordChange}
                   margin="normal"
                   required
+                  error={passwordErrors.confirm}
+                  helperText={passwordErrors.confirm ? "Passwords must match" : ""}
                 />
               </DialogContent>
               <DialogActions>
@@ -861,7 +1034,7 @@ const MembersManagement = () => {
                   onClick={handleChangePassword}
                   variant="contained"
                   color="primary"
-                  disabled={isLoading || !passwords.new || passwords.new !== passwords.confirm}
+                  disabled={isLoading || !passwords.new || passwords.new !== passwords.confirm || passwordErrors.new}
                 >
                   {isLoading ? <CircularProgress size={24} /> : "Change Password"}
                 </Button>

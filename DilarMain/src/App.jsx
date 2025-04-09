@@ -4,8 +4,6 @@ import Layout from "./components/Layout";
 import Dashboard from "./pages/Dashboard";
 import Settings from "./pages/Settings";
 import PageNotFound from "./components/PageNotFound";
-import EditContactModal from "./Modals/EditContactModal";
-import FileUploadModal from "./Modals/FileUploadModal";
 import TeamManagement from "./pages/TeamManagement";
 import AuthPages from './pages/Auth-Pages'
 import { Provider } from 'react-redux';
@@ -16,6 +14,8 @@ import ContactManagement from "./pages/ContactManagement";
 import Attendance from "./pages/Attendance";
 import Reports from "./pages/Reports";
 import Performance from "./pages/Performance";
+import ChangePassword from "./pages/ChangePassword";
+import UserProfile from "./pages/UserProfile";
 
 
 function App() {
@@ -35,9 +35,9 @@ function App() {
             <Route path="/app/reports/attendance" element={<Attendance />} />
             <Route path="/app/reports/reports" element={<Reports />} />
             <Route path="/app/reports/performance" element={<Performance />} />
+            <Route path="/app/user-profile" element={<UserProfile />} />
             <Route path="/app/settings" element={<Settings />} />
-            <Route path="/app/settings/edit" element={<EditContactModal />} />
-            <Route path="/app/settings/upload" element={<FileUploadModal />} />
+            <Route path="/app/settings/change-password" element={<ChangePassword />} />
             <Route path="/app/teams" element={<TeamManagement />} />
             <Route path="*" element={<PageNotFound />} />
           </Route>
